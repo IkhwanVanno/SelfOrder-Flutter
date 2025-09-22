@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:selforder/pages/auth/forgotpasswordpage.dart';
-import 'package:selforder/pages/auth/loginpage.dart';
-import 'package:selforder/pages/auth/profilepage.dart';
-import 'package:selforder/pages/auth/registerpage.dart';
-import 'package:selforder/pages/cart/cartpage.dart';
-import 'package:selforder/pages/home/homepage.dart';
+import 'package:selforder/pages/forgotpasswordpage.dart';
+import 'package:selforder/pages/loginpage.dart';
+import 'package:selforder/pages/profilepage.dart';
+import 'package:selforder/pages/registerpage.dart';
+import 'package:selforder/pages/cartpage.dart';
+import 'package:selforder/pages/homepage.dart';
 import 'package:selforder/pages/order/orderpage.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/cart_service.dart';
