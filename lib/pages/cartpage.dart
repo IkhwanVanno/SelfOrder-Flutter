@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:selforder/models/cart_item.dart';
-import 'package:selforder/services/api_service.dart';
-import 'package:selforder/services/cart_service.dart';
-import 'package:selforder/services/duitku_service.dart';
-import 'package:selforder/widgets/summary_row.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+class CartItem {
+  final int productId;
+  final String name;
+  final String image;
+  final int price;
+  int quantity;
+
+  CartItem({
+    required this.productId,
+    required this.name,
+    required this.image,
+    required this.price,
+    required this.quantity,
+  });
+}
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -14,21 +24,41 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
-  final CartService _cartService = CartService();
-  final DuitkuService _duitkuService = DuitkuService();
-  final ApiService _apiService = ApiService();
-
   final TextEditingController _tableNumberController = TextEditingController();
-  DuitkuPaymentMethod? _selectedPaymentMethod;
-  List<DuitkuPaymentMethod> _duitkuPaymentMethods = [];
-  bool _isLoadingPaymentMethods = false;
+  String? _selectedPaymentMethod = 'Credit Card';
+  final List<String> _paymentMethods = [
+    'Credit Card',
+    'Debit Card',
+    'Digital Wallet',
+    'Bank Transfer',
+    'Cash',
+  ];
   bool _isProcessingOrder = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadPaymentMethods();
-  }
+  // Dummy cart items
+  List<CartItem> _cartItems = [
+    CartItem(
+      productId: 1,
+      name: "Cappuccino",
+      image: "images/cappuccino.jpg",
+      price: 25000,
+      quantity: 2,
+    ),
+    CartItem(
+      productId: 2,
+      name: "Croissant",
+      image: "images/croissant.jpg",
+      price: 22000,
+      quantity: 1,
+    ),
+    CartItem(
+      productId: 3,
+      name: "Cheesecake",
+      image: "images/cheesecake.jpg",
+      price: 40000,
+      quantity: 1,
+    ),
+  ];
 
   @override
   void dispose() {
@@ -36,79 +66,37 @@ class _CartPageState extends State<CartPage> {
     super.dispose();
   }
 
-  Future<void> _loadPaymentMethods() async {
-    if (_cartService.isEmpty) return;
-
+  void _updateQuantity(int productId, int newQuantity) {
     setState(() {
-      _isLoadingPaymentMethods = true;
-    });
-
-    try {
-      final cartSummary = _cartService.getCartSummary();
-      final totalAmount = cartSummary['total'] as int;
-
-      final response = await _duitkuService.getPaymentMethods(amount: totalAmount);
-      
-      if (response.success && response.data != null && response.data!.isNotEmpty) {
-        setState(() {
-          _duitkuPaymentMethods = response.data!;
-          _selectedPaymentMethod = _duitkuPaymentMethods.first;
-        });
-      } else {
-        _showErrorSnackBar('Failed to load payment methods: ${response.error}');
+      final index = _cartItems.indexWhere(
+        (item) => item.productId == productId,
+      );
+      if (index != -1) {
+        if (newQuantity <= 0) {
+          _cartItems.removeAt(index);
+          _showSuccessSnackBar('Item removed from cart');
+        } else {
+          _cartItems[index].quantity = newQuantity;
+        }
       }
-    } catch (e) {
-      _showErrorSnackBar('Error loading payment methods: $e');
-    } finally {
-      setState(() {
-        _isLoadingPaymentMethods = false;
-      });
-    }
+    });
   }
 
-  Future<void> _updateQuantity(int productId, int newQuantity) async {
-    final response = await _cartService.updateQuantity(
-      productId: productId,
-      quantity: newQuantity,
-    );
-
-    if (!response.success) {
-      _showErrorSnackBar(response.error ?? 'Failed to update quantity');
-    }
-
-    // Reload payment methods if cart total changed
-    _loadPaymentMethods();
-    setState(() {});
-  }
-
-  Future<void> _removeItem(int productId) async {
-    final response = await _cartService.removeFromCart(productId);
-
-    if (response.success) {
-      _showSuccessSnackBar('Item removed from cart');
-      // Reload payment methods if cart total changed
-      _loadPaymentMethods();
-    } else {
-      _showErrorSnackBar(response.error ?? 'Failed to remove item');
-    }
-
-    setState(() {});
+  void _removeItem(int productId) {
+    setState(() {
+      _cartItems.removeWhere((item) => item.productId == productId);
+    });
+    _showSuccessSnackBar('Item removed from cart');
   }
 
   Future<void> _processOrder() async {
-    // Validate form
     if (_tableNumberController.text.isEmpty) {
       _showErrorSnackBar('Please enter table number');
       return;
     }
 
-    if (_cartService.isEmpty) {
+    if (_cartItems.isEmpty) {
       _showErrorSnackBar('Cart is empty');
-      return;
-    }
-
-    if (!_apiService.isAuthenticated) {
-      _showErrorSnackBar('Please login to place order');
       return;
     }
 
@@ -121,114 +109,44 @@ class _CartPageState extends State<CartPage> {
       _isProcessingOrder = true;
     });
 
-    try {
-      final tableNumber = int.tryParse(_tableNumberController.text);
-      if (tableNumber == null || tableNumber <= 0) {
-        _showErrorSnackBar('Please enter a valid table number');
-        setState(() {
-          _isProcessingOrder = false;
-        });
-        return;
-      }
+    // Simulate processing delay
+    await Future.delayed(const Duration(seconds: 2));
 
-      // Create order
-      final orderResponse = await _cartService.createOrder(
-        tableNumber: tableNumber,
-        paymentMethod: _selectedPaymentMethod!.paymentName,
-      );
+    setState(() {
+      _isProcessingOrder = false;
+    });
 
-      if (!orderResponse.success) {
-        _showErrorSnackBar(orderResponse.error ?? 'Failed to create order');
-        setState(() {
-          _isProcessingOrder = false;
-        });
-        return;
-      }
-
-      final orderData = orderResponse.data!;
-
-      // Process Duitku payment
-      await _processDuitkuPayment(orderData);
-    } catch (e) {
-      _showErrorSnackBar('Failed to process order: $e');
-    } finally {
-      setState(() {
-        _isProcessingOrder = false;
-      });
-    }
+    // Show success dialog
+    _showOrderSuccessDialog();
   }
 
-  Future<void> _processDuitkuPayment(Map<String, dynamic> orderData) async {
-    try {
-      final currentUser = _apiService.currentUser;
-      if (currentUser == null) {
-        _showErrorSnackBar('User information not available');
-        return;
-      }
+  void _showOrderSuccessDialog() {
+    final cartSummary = _getCartSummary();
 
-      final cartSummary = _cartService.getCartSummary();
-      final totalAmount = cartSummary['total'] as int;
-
-      final transactionResponse = await _duitkuService.createTransaction(
-        paymentMethod: _selectedPaymentMethod!.paymentMethod,
-        paymentAmount: totalAmount,
-        customerName: '${currentUser['FirstName']} ${currentUser['Surname']}',
-        email: currentUser['Email'] ?? '',
-        phoneNumber: currentUser['Phone'] ?? '08123456789',
-        productDetails: 'Order from SelfOrder Cafe',
-        orderData: orderData,
-      );
-
-      if (transactionResponse.success && transactionResponse.data != null) {
-        final transaction = transactionResponse.data!;
-        
-        if (transaction.paymentUrl != null) {
-          // Open payment URL
-          final uri = Uri.parse(transaction.paymentUrl!);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            _showPaymentSuccessDialog(orderData);
-          } else {
-            _showErrorSnackBar('Cannot open payment URL');
-          }
-        } else if (transaction.vaNumber != null) {
-          // Show VA number for bank transfer
-          _showVANumberDialog(transaction, orderData);
-        } else {
-          _showPaymentSuccessDialog(orderData);
-        }
-      } else {
-        _showErrorSnackBar(transactionResponse.error ?? 'Payment failed');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Payment processing failed: $e');
-    }
-  }
-
-  void _showPaymentSuccessDialog(Map<String, dynamic> orderData) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Order Created Successfully!'),
+        title: const Text('Order Placed Successfully!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Your order has been placed and payment is being processed.'),
+            const Text('Your order has been placed successfully.'),
             const SizedBox(height: 16),
-            Text('Order ID: ${orderData['ID']}'),
+            Text(
+              'Order ID: #${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+            ),
             Text('Table: ${_tableNumberController.text}'),
-            Text('Payment Method: ${_selectedPaymentMethod?.paymentName ?? 'N/A'}'),
+            Text('Payment Method: $_selectedPaymentMethod'),
+            Text('Total: Rp ${_formatCurrency(cartSummary['total'] ?? 0)}'),
           ],
         ),
         actions: [
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // Clear cart and navigate to home or orders page
-              _cartService.clearCart();
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              _clearCart();
             },
             child: const Text('OK'),
           ),
@@ -237,64 +155,68 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  void _showVANumberDialog(DuitkuTransactionResponse transaction, Map<String, dynamic> orderData) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Virtual Account Payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Please transfer to the following Virtual Account:'),
-            const SizedBox(height: 16),
-            Text('Bank: ${_selectedPaymentMethod?.paymentName ?? 'N/A'}'),
-            if (transaction.vaNumber != null)
-              Text('VA Number: ${transaction.vaNumber}'),
-            Text('Amount: Rp ${transaction.amount?.toString() ?? '0'}'),
-            const SizedBox(height: 16),
-            const Text('Payment will be verified automatically.'),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _cartService.clearCart();
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+  void _clearCart() {
+    setState(() {
+      _cartItems.clear();
+      _tableNumberController.clear();
+    });
+    _showSuccessSnackBar('Cart cleared');
+  }
+
+  Map<String, int> _getCartSummary() {
+    final subtotal = _cartItems.fold<int>(
+      0,
+      (sum, item) => sum + (item.price * item.quantity),
     );
+
+    const adminFee = 2500;
+    final paymentFee = _getPaymentFee();
+    final total = subtotal + adminFee + paymentFee;
+
+    return {
+      'subtotal': subtotal,
+      'adminFee': adminFee,
+      'paymentFee': paymentFee,
+      'total': total,
+    };
+  }
+
+  int _getPaymentFee() {
+    switch (_selectedPaymentMethod) {
+      case 'Credit Card':
+        return 2000;
+      case 'Digital Wallet':
+        return 1500;
+      case 'Bank Transfer':
+        return 3000;
+      default:
+        return 0;
+    }
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  String _formatCurrency(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _cartService.isEmpty
-          ? _buildEmptyCart()
-          : _buildCartContent(),
+      body: _cartItems.isEmpty ? _buildEmptyCart() : _buildCartContent(),
     );
   }
 
@@ -311,18 +233,12 @@ class _CartPageState extends State<CartPage> {
           const SizedBox(height: 16),
           Text(
             'Your cart is empty',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
             'Add some items to get started',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -330,7 +246,7 @@ class _CartPageState extends State<CartPage> {
   }
 
   Widget _buildCartContent() {
-    final cartSummary = _cartService.getCartSummary();
+    final cartSummary = _getCartSummary();
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -339,9 +255,9 @@ class _CartPageState extends State<CartPage> {
           // Cart Items List
           Expanded(
             child: ListView.builder(
-              itemCount: _cartService.cartItems.length,
+              itemCount: _cartItems.length,
               itemBuilder: (context, index) {
-                final item = _cartService.cartItems[index];
+                final item = _cartItems[index];
                 return _buildCartItemCard(item);
               },
             ),
@@ -362,7 +278,21 @@ class _CartPageState extends State<CartPage> {
           const SizedBox(height: 12),
 
           // Payment Method
-          _buildPaymentMethodDropdown(),
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+              labelText: 'Metode Pembayaran',
+              border: OutlineInputBorder(),
+            ),
+            initialValue: _selectedPaymentMethod,
+            onChanged: (value) {
+              setState(() {
+                _selectedPaymentMethod = value;
+              });
+            },
+            items: _paymentMethods.map((method) {
+              return DropdownMenuItem(value: method, child: Text(method));
+            }).toList(),
+          ),
 
           const SizedBox(height: 20),
 
@@ -375,29 +305,18 @@ class _CartPageState extends State<CartPage> {
             ),
             child: Column(
               children: [
-                SummaryRow(
-                  title: 'Total Belanja',
-                  value: cartSummary['subtotal'],
-                ),
+                _buildSummaryRow('Total Belanja', cartSummary['subtotal'] ?? 0),
                 const SizedBox(height: 4),
-                SummaryRow(
-                  title: 'Biaya Admin',
-                  value: cartSummary['adminFee'],
+                _buildSummaryRow('Biaya Admin', cartSummary['adminFee'] ?? 0),
+                const SizedBox(height: 4),
+                _buildSummaryRow(
+                  'Biaya Payment',
+                  cartSummary['paymentFee'] ?? 0,
                 ),
-                if (_selectedPaymentMethod != null && _selectedPaymentMethod!.totalFee > 0)
-                  Column(
-                    children: [
-                      const SizedBox(height: 4),
-                      SummaryRow(
-                        title: 'Biaya Payment',
-                        value: _selectedPaymentMethod!.totalFee,
-                      ),
-                    ],
-                  ),
                 const Divider(height: 24, thickness: 1),
-                SummaryRow(
-                  title: 'Total Pembayaran',
-                  value: cartSummary['total'] + (_selectedPaymentMethod?.totalFee ?? 0),
+                _buildSummaryRow(
+                  'Total Pembayaran',
+                  cartSummary['total'] ?? 0,
                   bold: true,
                 ),
               ],
@@ -410,9 +329,7 @@ class _CartPageState extends State<CartPage> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: (_isProcessingOrder || _selectedPaymentMethod == null) 
-                  ? null 
-                  : _processOrder,
+              onPressed: _isProcessingOrder ? null : _processOrder,
               child: _isProcessingOrder
                   ? const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -445,7 +362,7 @@ class _CartPageState extends State<CartPage> {
             // Product Image
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
+              child: Image.asset(
                 item.image,
                 width: 60,
                 height: 60,
@@ -475,11 +392,8 @@ class _CartPageState extends State<CartPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rp ${item.price}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    'Rp ${_formatCurrency(item.price)}',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
@@ -491,28 +405,21 @@ class _CartPageState extends State<CartPage> {
                 Row(
                   children: [
                     IconButton(
-                      onPressed: () => _updateQuantity(
-                        item.productId,
-                        item.quantity - 1,
-                      ),
+                      onPressed: () =>
+                          _updateQuantity(item.productId, item.quantity - 1),
                       icon: const Icon(Icons.remove),
                     ),
                     Text('${item.quantity}'),
                     IconButton(
-                      onPressed: () => _updateQuantity(
-                        item.productId,
-                        item.quantity + 1,
-                      ),
+                      onPressed: () =>
+                          _updateQuantity(item.productId, item.quantity + 1),
                       icon: const Icon(Icons.add),
                     ),
                   ],
                 ),
                 // Delete Button
                 IconButton(
-                  icon: const Icon(
-                    Icons.delete,
-                    color: Colors.red,
-                  ),
+                  icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => _removeItem(item.productId),
                 ),
               ],
@@ -523,36 +430,24 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildPaymentMethodDropdown() {
-    return DropdownButtonFormField<DuitkuPaymentMethod>(
-      decoration: const InputDecoration(
-        labelText: 'Metode Pembayaran',
-        border: OutlineInputBorder(),
-      ),
-      isExpanded: true,
-      isDense: true,
-      initialValue: _selectedPaymentMethod,
-      onChanged: _isLoadingPaymentMethods ? null : (value) {
-        setState(() {
-          _selectedPaymentMethod = value;
-        });
-      },
-      items: _duitkuPaymentMethods.map((method) {
-        return DropdownMenuItem(
-          value: method,
-          child: Container(
-            width: double.infinity,
-            child: Text(
-              method.paymentName,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14),
-            ),
+  Widget _buildSummaryRow(String title, int value, {bool bold = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
           ),
-        );
-      }).toList(),
-      hint: _isLoadingPaymentMethods 
-          ? const Text('Loading payment methods...') 
-          : const Text('Select payment method'),
+        ),
+        Text(
+          'Rp ${_formatCurrency(value)}',
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            color: bold ? Colors.green : null,
+          ),
+        ),
+      ],
     );
   }
 }

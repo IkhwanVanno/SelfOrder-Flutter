@@ -1,20 +1,58 @@
 import 'package:flutter/material.dart';
 
-class RegisterPage extends StatelessWidget {
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
   @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final formKey = GlobalKey<FormState>();
+  final TextEditingController firstnameController = TextEditingController();
+  final TextEditingController lastnameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    firstnameController.dispose();
+    lastnameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> submitForm() async {
+    if (!formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate registration process
+    await Future.delayed(const Duration(seconds: 2));
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Registration successful! Please login.'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    // Navigate to login
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final TextEditingController firstnameController = TextEditingController();
-    final TextEditingController lastnameController = TextEditingController();
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
-
-    void submitForm() {
-      if (formKey.currentState!.validate()) {}
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daftar', style: TextStyle(color: Colors.white)),
@@ -29,7 +67,7 @@ class RegisterPage extends StatelessWidget {
             child: Form(
               key: formKey,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 400),
+                constraints: const BoxConstraints(maxWidth: 400),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -45,6 +83,7 @@ class RegisterPage extends StatelessWidget {
                             decoration: const InputDecoration(
                               labelText: 'Nama Depan',
                               border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.person_outline),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -61,6 +100,7 @@ class RegisterPage extends StatelessWidget {
                             decoration: const InputDecoration(
                               labelText: 'Nama Belakang',
                               border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.person_outline),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -77,13 +117,18 @@ class RegisterPage extends StatelessWidget {
                     // Email
                     TextFormField(
                       controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Email tidak boleh kosong';
+                        }
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                          return 'Format email tidak valid';
                         }
                         return null;
                       },
@@ -93,24 +138,67 @@ class RegisterPage extends StatelessWidget {
                     // Password
                     TextFormField(
                       controller: passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
                         labelText: 'Sandi',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock_outlined),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Sandi tidak boleh kosong';
+                        }
+                        if (value.length < 6) {
+                          return 'Sandi minimal 6 karakter';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 24),
 
-                    // Tombol Submit
-                    ElevatedButton(
-                      onPressed: submitForm,
-                      child: const Text('Daftar Sekarang'),
+                    // Submit Button
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : submitForm,
+                        child: _isLoading
+                            ? const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text('Mendaftar...'),
+                                ],
+                              )
+                            : const Text(
+                                'Daftar Sekarang',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
                     ),
                   ],
                 ),

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:selforder/services/api_service.dart';
-import 'package:selforder/services/cart_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,13 +8,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final ApiService _apiService = ApiService();
-  final CartService _cartService = CartService();
-  
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -36,34 +31,26 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    try {
-      final response = await _apiService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    // Simulate login process
+    await Future.delayed(const Duration(seconds: 2));
 
-      if (response.success) {
-        // Merge carts after successful login
-        await _cartService.mergeCartsOnLogin();
-        
-        _showSuccessSnackBar('Login successful');
-        
-        // Navigate back or to main page
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        } else {
-          // Navigate to main page if this is the root
-          Navigator.pushReplacementNamed(context, '/');
-        }
-      } else {
-        _showErrorSnackBar(response.error ?? 'Login failed');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Login failed: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Dummy login validation
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email == "demo@example.com" && password == "demo123") {
+      _showSuccessSnackBar('Login successful');
+      Navigator.pop(context, true); // Return true to indicate successful login
+    } else if (email.isNotEmpty && password.length >= 6) {
+      // Accept any valid email format and password >= 6 characters
+      _showSuccessSnackBar('Login successful');
+      Navigator.pop(context, true);
+    } else {
+      _showErrorSnackBar('Invalid credentials');
     }
   }
 
@@ -71,25 +58,15 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushNamed(context, '/register');
   }
 
-  void _navigateToForgotPassword() {
-    Navigator.pushNamed(context, '/forgot-password');
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
@@ -116,6 +93,36 @@ class _LoginPageState extends State<LoginPage> {
                     Image.asset("images/cafe.png", height: 100),
                     const SizedBox(height: 32),
 
+                    // Demo credentials info
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withAlpha(25),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withAlpha(25)),
+                      ),
+                      child: const Column(
+                        children: [
+                          Text(
+                            'Demo Credentials',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 4),
+                          Text('Email: demo@example.com'),
+                          Text('Password: demo123'),
+                          SizedBox(height: 4),
+                          Text(
+                            'Or use any valid email and password (min 6 chars)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
                     // Email Field
                     TextFormField(
                       controller: _emailController,
@@ -130,7 +137,9 @@ class _LoginPageState extends State<LoginPage> {
                         if (value == null || value.trim().isEmpty) {
                           return 'Email tidak boleh kosong';
                         }
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
+                        if (!RegExp(
+                          r'^[^@]+@[^@]+\.[^@]+',
+                        ).hasMatch(value.trim())) {
                           return 'Format email tidak valid';
                         }
                         return null;
@@ -150,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                         prefixIcon: const Icon(Icons.lock_outlined),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword 
+                            _obscurePassword
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                           ),
@@ -194,7 +203,9 @@ class _LoginPageState extends State<LoginPage> {
                                     width: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
                                     ),
                                   ),
                                   SizedBox(width: 12),
@@ -233,18 +244,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
 
-                    // Forgot Password Link
-                    TextButton(
-                      onPressed: _isLoading ? null : _navigateToForgotPassword,
-                      child: const Text(
-                        "Lupa Sandi?",
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-
                     const SizedBox(height: 24),
 
                     // Divider
@@ -266,10 +265,11 @@ class _LoginPageState extends State<LoginPage> {
 
                     // Guest Login Button
                     OutlinedButton.icon(
-                      onPressed: _isLoading ? null : () {
-                        // Navigate back to continue as guest
-                        Navigator.pop(context);
-                      },
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                            },
                       icon: const Icon(Icons.person_outline),
                       label: const Text('Lanjutkan sebagai Tamu'),
                       style: OutlinedButton.styleFrom(

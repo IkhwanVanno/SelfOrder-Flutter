@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:selforder/services/api_service.dart';
-import 'package:selforder/services/pdf_service.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -11,11 +9,7 @@ class OrderPage extends StatefulWidget {
 }
 
 class _OrderPageState extends State<OrderPage> {
-  final ApiService _apiService = ApiService();
-  final PdfService _pdfService = PdfService();
-
-  List<Map<String, dynamic>> _orders = [];
-  bool _isLoading = true;
+  bool _isAuthenticated = false; // Simulate authentication state
   String _selectedFilter = 'All';
   final List<String> _filterOptions = [
     'All',
@@ -32,153 +26,115 @@ class _OrderPageState extends State<OrderPage> {
     decimalDigits: 0,
   );
 
-  @override
-  void initState() {
-    super.initState();
-    _loadOrders();
-  }
+  // Dummy orders data
+  final List<Map<String, dynamic>> _allOrders = [
+    {
+      'ID': 1001,
+      'InvoiceNumber': 'INV-2024-001',
+      'TableNumber': 5,
+      'Status': 'Completed',
+      'PaymentMethod': 'Credit Card',
+      'TotalAmount': 87500,
+      'Created': DateTime.now().subtract(const Duration(hours: 2)),
+      'Items': [
+        {'ProductName': 'Cappuccino', 'Quantity': 2, 'Price': 25000},
+        {'ProductName': 'Croissant', 'Quantity': 1, 'Price': 22000},
+        {'ProductName': 'Cheesecake', 'Quantity': 1, 'Price': 40000},
+      ],
+    },
+    {
+      'ID': 1002,
+      'InvoiceNumber': 'INV-2024-002',
+      'TableNumber': 3,
+      'Status': 'Processing',
+      'PaymentMethod': 'Digital Wallet',
+      'TotalAmount': 45000,
+      'Created': DateTime.now().subtract(const Duration(minutes: 30)),
+      'Items': [
+        {'ProductName': 'Latte', 'Quantity': 1, 'Price': 28000},
+        {'ProductName': 'Muffin', 'Quantity': 1, 'Price': 18000},
+      ],
+    },
+    {
+      'ID': 1003,
+      'InvoiceNumber': 'INV-2024-003',
+      'TableNumber': 8,
+      'Status': 'Pending',
+      'PaymentMethod': 'Bank Transfer',
+      'TotalAmount': 32000,
+      'Created': DateTime.now().subtract(const Duration(minutes: 15)),
+      'Items': [
+        {'ProductName': 'Americano', 'Quantity': 1, 'Price': 18000},
+        {'ProductName': 'Green Tea', 'Quantity': 1, 'Price': 12000},
+      ],
+    },
+    {
+      'ID': 1004,
+      'InvoiceNumber': 'INV-2024-004',
+      'TableNumber': 2,
+      'Status': 'Cancelled',
+      'PaymentMethod': 'Cash',
+      'TotalAmount': 25000,
+      'Created': DateTime.now().subtract(const Duration(days: 1)),
+      'Items': [
+        {'ProductName': 'Espresso', 'Quantity': 1, 'Price': 15000},
+      ],
+    },
+    {
+      'ID': 1005,
+      'InvoiceNumber': 'INV-2024-005',
+      'TableNumber': 12,
+      'Status': 'Completed',
+      'PaymentMethod': 'Credit Card',
+      'TotalAmount': 125000,
+      'Created': DateTime.now().subtract(const Duration(days: 2)),
+      'Items': [
+        {'ProductName': 'Mocha', 'Quantity': 2, 'Price': 32000},
+        {'ProductName': 'Tiramisu', 'Quantity': 2, 'Price': 45000},
+        {'ProductName': 'Sandwich', 'Quantity': 1, 'Price': 35000},
+      ],
+    },
+  ];
 
   void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login');
-  }
-
-  Future<void> _loadOrders() async {
-    if (!_apiService.isAuthenticated) {
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await _apiService.getOrders();
-
-      if (response.success && response.data != null) {
+    Navigator.pushNamed(context, '/login').then((result) {
+      if (result == true) {
         setState(() {
-          _orders = response.data!;
+          _isAuthenticated = true;
         });
-      } else {
-        _showErrorSnackBar(response.error ?? 'Failed to load orders');
       }
-    } catch (e) {
-      _showErrorSnackBar('Failed to load orders: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    });
   }
 
   List<Map<String, dynamic>> get _filteredOrders {
     if (_selectedFilter == 'All') {
-      return _orders;
+      return _allOrders;
     }
-    return _orders.where((order) {
+    return _allOrders.where((order) {
       final status = order['Status'] ?? 'Unknown';
       return status.toLowerCase() == _selectedFilter.toLowerCase();
     }).toList();
   }
 
-  Future<void> _downloadReceipt(Map<String, dynamic> order) async {
-    try {
-      // Show loading dialog
-      _showLoadingDialog('Generating receipt...');
-
-      // Get order items
-      List<Map<String, dynamic>> orderItems = [];
-      if (order['Items'] != null) {
-        orderItems = List<Map<String, dynamic>>.from(order['Items']);
-      } else {
-        // If items are not included, you might need to fetch them separately
-        // For now, we'll create a dummy item
-        orderItems = [
-          {
-            'ProductName': 'Order Items',
-            'Quantity': 1,
-            'Price': order['TotalAmount'] ?? 0,
-          },
-        ];
-      }
-
-      final response = await _pdfService.generateReceiptPdf(
-        order: order,
-        orderItems: orderItems,
-      );
-
-      Navigator.of(context).pop(); // Close loading dialog
-
-      if (response.success && response.data != null) {
-        final downloadResponse = await _pdfService.downloadPdf(
-          filePath: response.data!,
-          customName: 'receipt_${order['InvoiceNumber'] ?? order['ID']}.pdf',
-        );
-
-        if (downloadResponse.success) {
-          _showSuccessSnackBar('Receipt downloaded successfully');
-        } else {
-          _showErrorSnackBar(downloadResponse.error ?? 'Download failed');
-        }
-      } else {
-        _showErrorSnackBar(response.error ?? 'Failed to generate receipt');
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog if open
-      _showErrorSnackBar('Failed to download receipt: $e');
-    }
+  Future<void> _refreshOrders() async {
+    // Simulate refresh
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {});
   }
 
-  Future<void> _shareReceipt(Map<String, dynamic> order) async {
-    try {
-      _showLoadingDialog('Generating receipt...');
+  void _downloadReceipt(Map<String, dynamic> order) {
+    _showSuccessSnackBar('Receipt download started (Demo)');
+  }
 
-      List<Map<String, dynamic>> orderItems = [];
-      if (order['Items'] != null) {
-        orderItems = List<Map<String, dynamic>>.from(order['Items']);
-      } else {
-        orderItems = [
-          {
-            'ProductName': 'Order Items',
-            'Quantity': 1,
-            'Price': order['TotalAmount'] ?? 0,
-          },
-        ];
-      }
-
-      final response = await _pdfService.generateReceiptPdf(
-        order: order,
-        orderItems: orderItems,
-      );
-
-      Navigator.of(context).pop(); // Close loading dialog
-
-      if (response.success && response.data != null) {
-        final shareResponse = await _pdfService.sharePdf(
-          filePath: response.data!,
-          subject: 'Receipt - ${order['InvoiceNumber'] ?? order['ID']}',
-          text: 'Please find your order receipt attached.',
-        );
-
-        if (!shareResponse.success) {
-          _showErrorSnackBar(shareResponse.error ?? 'Failed to share receipt');
-        }
-      } else {
-        _showErrorSnackBar(response.error ?? 'Failed to generate receipt');
-      }
-    } catch (e) {
-      Navigator.of(context).pop();
-      _showErrorSnackBar('Failed to share receipt: $e');
-    }
+  void _shareReceipt(Map<String, dynamic> order) {
+    _showSuccessSnackBar('Receipt shared successfully (Demo)');
   }
 
   void _showOrderDetails(Map<String, dynamic> order) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Order Details'),
+        title: const Text('Order Details'),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,7 +166,7 @@ class _OrderPageState extends State<OrderPage> {
                   (item) => Padding(
                     padding: const EdgeInsets.only(left: 8, top: 4),
                     child: Text(
-                      '• ${item['ProductName']} x${item['Quantity']}',
+                      '• ${item['ProductName']} x${item['Quantity']} - Rp ${_formatCurrencySimple(item['Price'])}',
                     ),
                   ),
                 )),
@@ -254,28 +210,6 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-  void _showLoadingDialog(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 16),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
@@ -297,6 +231,13 @@ class _OrderPageState extends State<OrderPage> {
     return _dateFormat.format(dateTime);
   }
 
+  String _formatCurrencySimple(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+  }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
@@ -314,13 +255,24 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_apiService.isAuthenticated) {
+    // Simulate authentication - for demo, set to true after a delay
+    if (!_isAuthenticated) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          setState(() {
+            _isAuthenticated = true;
+          });
+        }
+      });
+    }
+
+    if (!_isAuthenticated) {
       return _buildNotAuthenticatedView();
     }
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _loadOrders,
+        onRefresh: _refreshOrders,
         child: Column(
           children: [
             // Filter Section
@@ -365,9 +317,7 @@ class _OrderPageState extends State<OrderPage> {
 
             // Orders List
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredOrders.isEmpty
+              child: _filteredOrders.isEmpty
                   ? _buildEmptyOrdersView()
                   : _buildOrdersList(),
             ),
@@ -417,7 +367,7 @@ class _OrderPageState extends State<OrderPage> {
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           const SizedBox(height: 16),
-          TextButton(onPressed: _loadOrders, child: const Text('Refresh')),
+          TextButton(onPressed: _refreshOrders, child: const Text('Refresh')),
         ],
       ),
     );

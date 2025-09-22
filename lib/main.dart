@@ -1,29 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:selforder/pages/forgotpasswordpage.dart';
 import 'package:selforder/pages/loginpage.dart';
 import 'package:selforder/pages/profilepage.dart';
 import 'package:selforder/pages/registerpage.dart';
 import 'package:selforder/pages/cartpage.dart';
 import 'package:selforder/pages/homepage.dart';
-import 'package:selforder/pages/order/orderpage.dart';
-import 'package:selforder/services/api_service.dart';
-import 'package:selforder/services/cart_service.dart';
-import 'package:selforder/services/duitku_service.dart';
-import 'package:selforder/services/pdf_service.dart';
+import 'package:selforder/pages/orderpage.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize services
-  final apiService = ApiService();
-  final cartService = CartService();
-
-  // Load stored auth data and cart
-  await apiService.loadAuthData();
-  await cartService.loadCart();
-
-  runApp(MyApp());
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -31,42 +15,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        Provider<ApiService>(create: (_) => ApiService()),
-        Provider<CartService>(create: (_) => CartService()),
-        Provider<DuitkuService>(create: (_) => DuitkuService()),
-        Provider<PdfService>(create: (_) => PdfService()),
-      ],
-      child: MaterialApp(
-        title: 'SelfOrder',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
+    return MaterialApp(
+      title: 'SelfOrder',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
-            elevation: 0,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         ),
-        home: const MainPage(),
-        routes: {
-          '/login': (context) => const LoginPage(),
-          '/register': (context) => const RegisterPage(),
-          '/forgot-password': (context) => const ForgotPassword(),
-        },
       ),
+      home: const MainPage(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/register': (context) => const RegisterPage(),
+      },
     );
   }
 }
@@ -80,6 +55,9 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _bottomNavIndex = 0;
+  bool _isAuthenticated = false;
+  Map<String, dynamic>? _currentUser;
+  int _cartItemCount = 0;
 
   final List<Widget> _pages = const [
     HomePage(),
@@ -95,14 +73,21 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login');
+    Navigator.pushNamed(context, '/login').then((result) {
+      if (result == true) {
+        setState(() {
+          _isAuthenticated = true;
+          _currentUser = {
+            'FirstName': 'John',
+            'Surname': 'Doe',
+            'Email': 'john.doe@example.com',
+          };
+        });
+      }
+    });
   }
 
   void _handleLogout() async {
-    final apiService = Provider.of<ApiService>(context, listen: false);
-    final cartService = Provider.of<CartService>(context, listen: false);
-
-    // Show confirmation dialog
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -123,138 +108,121 @@ class _MainPageState extends State<MainPage> {
     );
 
     if (shouldLogout == true) {
-      try {
-        // Logout from API
-        await apiService.logout();
+      setState(() {
+        _isAuthenticated = false;
+        _currentUser = null;
+        _cartItemCount = 0;
+      });
 
-        // Clear local cart
-        await cartService.clearCart();
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Logged out successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Refresh the app state
-        setState(() {});
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logged out successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
+  // void _updateCartCount(int count) {
+  //   setState(() {
+  //     _cartItemCount = count;
+  //   });
+  // }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<ApiService>(
-      builder: (context, apiService, child) {
-        return Consumer<CartService>(
-          builder: (context, cartService, child) {
-            return Scaffold(
-              appBar: AppBar(
-                backgroundColor: Colors.blue,
-                automaticallyImplyLeading: false,
-                title: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Text(
-                      'SelfOrder',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        automaticallyImplyLeading: false,
+        title: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Text(
+              'SelfOrder',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Image.asset("images/cafe.png", height: 30),
+                _buildAuthButton(),
+              ],
+            ),
+          ],
+        ),
+      ),
+      body: IndexedStack(index: _bottomNavIndex, children: _pages),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.black54,
+        currentIndex: _bottomNavIndex,
+        onTap: _onButtonNavTapped,
+        type: BottomNavigationBarType.fixed,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Beranda',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Order',
+          ),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.shopping_cart),
+                if (_cartItemCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        _cartItemCount > 99 ? '99+' : _cartItemCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Image.asset("images/cafe.png", height: 30),
-                        _buildAuthButton(apiService),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              body: IndexedStack(index: _bottomNavIndex, children: _pages),
-              bottomNavigationBar: BottomNavigationBar(
-                backgroundColor: Colors.white,
-                selectedItemColor: Colors.blue,
-                unselectedItemColor: Colors.black54,
-                currentIndex: _bottomNavIndex,
-                onTap: _onButtonNavTapped,
-                type: BottomNavigationBarType.fixed,
-                items: [
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.home),
-                    label: 'Beranda',
                   ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.receipt_long),
-                    label: 'Order',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Stack(
-                      children: [
-                        const Icon(Icons.shopping_cart),
-                        if (cartService.itemCount > 0)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 16,
-                                minHeight: 16,
-                              ),
-                              child: Text(
-                                cartService.itemCount > 99
-                                    ? '99+'
-                                    : cartService.itemCount.toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    label: 'Keranjang',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.person),
-                    label: 'Profil',
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+              ],
+            ),
+            label: 'Keranjang',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profil',
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildAuthButton(ApiService apiService) {
-    if (apiService.isAuthenticated) {
+  Widget _buildAuthButton() {
+    if (_isAuthenticated) {
       return PopupMenuButton<String>(
         onSelected: (value) {
           switch (value) {
             case 'profile':
               setState(() {
-                _bottomNavIndex = 3; // Navigate to profile page
+                _bottomNavIndex = 3;
               });
               break;
             case 'logout':
@@ -296,7 +264,7 @@ class _MainPageState extends State<MainPage> {
               const Icon(Icons.person, color: Colors.white, size: 16),
               const SizedBox(width: 4),
               Text(
-                _getDisplayName(apiService.currentUser),
+                _getDisplayName(_currentUser),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
