@@ -23,10 +23,13 @@ class SessionManager {
     await _prefs?.setString(_keyUserData, jsonEncode(userData));
 
     if (cookie != null) {
-      // Extract session ID from cookie
-      String sessionId = cookie.split(';')[0];
-      await _prefs?.setString(_keySessionCookie, sessionId);
-      _sessionCookie = sessionId;
+      // Cari cookie PHPSESSID di dalam Set-Cookie
+      final sessionMatch = RegExp(r'PHPSESSID=([^;]+)').firstMatch(cookie);
+      if (sessionMatch != null) {
+        final sessionId = 'PHPSESSID=${sessionMatch.group(1)}';
+        await _prefs?.setString(_keySessionCookie, sessionId);
+        _sessionCookie = sessionId;
+      }
     }
 
     print(
