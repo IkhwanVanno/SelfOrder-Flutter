@@ -31,7 +31,6 @@ class _HomePageState extends State<HomePage> {
   Map<int, int> _guestCartQuantities = {};
   bool _isLoading = false;
 
-  // Auth listener function
   late Function() _authListener;
 
   @override
@@ -44,7 +43,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // Remove the auth listener when disposing
     AuthService.removeAuthStateListener(_authListener);
     super.dispose();
   }
@@ -87,7 +85,7 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       print('Error: $e');
-      _showErrorSnackBar("Failed to load data from server");
+      _showErrorSnackBar("Gagal memuat data dari server");
       setState(() => _isLoading = false);
     }
   }
@@ -109,7 +107,7 @@ class _HomePageState extends State<HomePage> {
         _cartQuantities = quantities;
       });
     } catch (e) {
-      print('Error loading cart quantities: $e');
+      print('Gagal memuat kuantitas produk: $e');
     }
   }
 
@@ -136,16 +134,18 @@ class _HomePageState extends State<HomePage> {
         _guestCartQuantities[product.id] =
             (_guestCartQuantities[product.id] ?? 0) + 1;
       });
-      _showSuccessSnackBar('${product.name} added to cart (guest mode)');
+      _showErrorSnackBar('Silahkan masuk terlebih dahulu');
       return;
     }
 
     try {
       await ApiService.addToCart(product.id, 1);
       await _loadCartQuantities();
-      _showSuccessSnackBar('${product.name} added to cart');
+      _showSuccessSnackBar(
+        '${product.name} Telah ditambahkan ke dalam keranjang',
+      );
     } catch (e) {
-      _showErrorSnackBar('Failed to add to cart: ${e.toString()}');
+      _showErrorSnackBar('Gagal menambahkan ke keranjang: ${e.toString()}');
     }
   }
 
@@ -154,9 +154,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         if (newQuantity <= 0) {
           _guestCartQuantities.remove(product.id);
-          _showSuccessSnackBar(
-            '${product.name} removed from cart (guest mode)',
-          );
+          _showSuccessSnackBar('${product.name} telah dihapus dari keranjang');
         } else {
           _guestCartQuantities[product.id] = newQuantity;
         }
@@ -171,24 +169,24 @@ class _HomePageState extends State<HomePage> {
         final cartItems = await ApiService.fetchCartItems();
         final cartItem = cartItems.firstWhere(
           (item) => item.productId == product.id,
-          orElse: () => throw Exception('Cart item not found'),
+          orElse: () => throw Exception('Barang keranjang tidak ditemukan'),
         );
         await ApiService.removeFromCart(cartItem.id);
-        _showSuccessSnackBar('${product.name} removed from cart');
+        _showSuccessSnackBar('${product.name} telah dihapus dari keranjang');
       } else if (currentCartQuantity == 0) {
         await ApiService.addToCart(product.id, newQuantity);
       } else {
         final cartItems = await ApiService.fetchCartItems();
         final cartItem = cartItems.firstWhere(
           (item) => item.productId == product.id,
-          orElse: () => throw Exception('Cart item not found'),
+          orElse: () => throw Exception('Barang Keranjang tidak ditemukan'),
         );
         await ApiService.updateCartItem(cartItem.id, newQuantity);
       }
 
       await _loadCartQuantities();
     } catch (e) {
-      _showErrorSnackBar('Failed to update cart: ${e.toString()}');
+      _showErrorSnackBar('Gagal update keranjang: ${e.toString()}');
     }
   }
 
@@ -246,7 +244,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
-                        'You are in guest mode. Login to sync your cart across devices.',
+                        'Anda belum masuk, silahkan masuk untuk order pesanan',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
@@ -257,7 +255,7 @@ class _HomePageState extends State<HomePage> {
                             // The auth listener will handle it automatically
                           }),
                       child: const Text(
-                        'Login',
+                        'Masuk',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
@@ -376,8 +374,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
           Text(
             _selectedCategoryId == null
-                ? 'No products available'
-                : 'No products in this category',
+                ? 'Produk tidak ada'
+                : 'Produk tidak ada dalam kategori ini',
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
@@ -463,7 +461,7 @@ class ProductCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    product.available ? "Available" : "Out of Stock",
+                    product.available ? "Tersedia" : "Habis",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -542,7 +540,7 @@ class ProductCard extends StatelessWidget {
         ),
         child: const Center(
           child: Text(
-            'Not Available',
+            'Tidak tersedia',
             style: TextStyle(
               color: Colors.grey,
               fontSize: 12,
@@ -564,7 +562,7 @@ class ProductCard extends StatelessWidget {
           ),
           child: const Center(
             child: Text(
-              'Add to Cart',
+              'Tambahkan ke keranjang',
               style: TextStyle(
                 color: Colors.amber,
                 fontSize: 12,

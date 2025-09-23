@@ -33,7 +33,6 @@ class _OrderPageState extends State<OrderPage> {
   List<Order> _allOrders = [];
   bool _isLoading = true;
 
-  // Auth listener function
   late Function() _authListener;
 
   @override
@@ -45,7 +44,6 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   void dispose() {
-    // Remove the auth listener when disposing
     AuthService.removeAuthStateListener(_authListener);
     super.dispose();
   }
@@ -79,7 +77,7 @@ class _OrderPageState extends State<OrderPage> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackBar('Failed to load orders: ${e.toString()}');
+      _showErrorSnackBar('Gagal memuat Order: ${e.toString()}');
     }
   }
 
@@ -107,7 +105,7 @@ class _OrderPageState extends State<OrderPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Order Details #${order.id}'),
+        title: Text('Detail Pesanan #${order.id}'),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +140,7 @@ class _OrderPageState extends State<OrderPage> {
               if (order.payment != null) ...[
                 const Divider(height: 20),
                 const Text(
-                  'Payment Information:',
+                  'Informasi Pemabayaran:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
@@ -230,7 +228,7 @@ class _OrderPageState extends State<OrderPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Filter by Status:',
+                    'Filter Status:',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   const SizedBox(height: 12),
@@ -292,7 +290,7 @@ class _OrderPageState extends State<OrderPage> {
             Icon(Icons.login, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Please login to view your orders',
+              'Silahkan Masuk untuk melihat pesanan anda',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
@@ -302,7 +300,7 @@ class _OrderPageState extends State<OrderPage> {
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Login'),
+              child: const Text('Masuk'),
             ),
           ],
         ),
@@ -319,13 +317,13 @@ class _OrderPageState extends State<OrderPage> {
           const SizedBox(height: 16),
           Text(
             _selectedFilter == 'All'
-                ? 'No orders found'
-                : 'No $_selectedFilter orders',
+                ? 'Pesanan tidak ditemukan'
+                : 'Tidak ada $_selectedFilter pesanan',
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your orders will appear here',
+            'Pesanan Anda akan ditampilkan di sini',
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           const SizedBox(height: 16),
@@ -428,7 +426,7 @@ class _OrderPageState extends State<OrderPage> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Table ${order.nomorMeja}',
+                              'Meja ${order.nomorMeja}',
                               style: const TextStyle(fontSize: 14),
                             ),
                           ],
@@ -496,7 +494,7 @@ class _OrderPageState extends State<OrderPage> {
                   TextButton.icon(
                     onPressed: () => _showOrderDetails(order),
                     icon: const Icon(Icons.info_outline, size: 16),
-                    label: const Text('View Details'),
+                    label: const Text('Lihat lebih detail'),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.blue,
                       padding: const EdgeInsets.symmetric(

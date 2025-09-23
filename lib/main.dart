@@ -83,7 +83,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         _isLoadingSiteConfig = false;
       });
     } catch (e) {
-      print('Failed to load site config: $e');
+      print('Gagal memuat SiteConfig: $e');
       setState(() {
         _isLoadingSiteConfig = false;
       });
@@ -174,7 +174,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             TextButton(
               onPressed: _navigateToLogin,
               child: const Text(
-                'Login',
+                'Masuk',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -189,16 +189,16 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Rumah'),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),
-            label: 'Cart',
+            label: 'Keranjang',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long),
-            label: 'Orders',
+            label: 'Pesanan',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,

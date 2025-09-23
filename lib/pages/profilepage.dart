@@ -19,7 +19,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _obscurePassword = true;
   Member? _currentUser;
 
-  // Auth listener function
   late Function() _authListener;
 
   @override
@@ -35,7 +34,6 @@ class _ProfilePageState extends State<ProfilePage> {
     lastnameController.dispose();
     emailController.dispose();
     passwordController.dispose();
-    // Remove the auth listener when disposing
     AuthService.removeAuthStateListener(_authListener);
     super.dispose();
   }
@@ -92,7 +90,7 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackBar('Failed to load profile: ${e.toString()}');
+      _showErrorSnackBar('Gagal memuat profil: ${e.toString()}');
     }
   }
 
@@ -115,10 +113,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (success) {
         passwordController.clear();
-        _showSuccessSnackBar('Profile updated successfully!');
+        _showSuccessSnackBar('Profile telah berhasil diperbarui!');
         _loadUserData();
       } else {
-        _showErrorSnackBar('Failed to update profile');
+        _showErrorSnackBar('Profile gagal diperbarui');
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -130,17 +128,17 @@ class _ProfilePageState extends State<ProfilePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: const Text('Keluar'),
+        content: const Text('Anda yakin ingin keluar?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Batalkan'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+            child: const Text('Keluar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -153,15 +151,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() => _isLoading = false);
 
-      _showSuccessSnackBar('Logged out successfully');
+      _showSuccessSnackBar('Berhasil keluar');
     }
   }
 
   void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login').then((_) {
-      // No need to manually call setState here anymore
-      // The auth listener will handle it automatically
-    });
+    Navigator.pushNamed(context, '/login').then((_) {});
   }
 
   void _showErrorSnackBar(String message) {
@@ -232,13 +227,13 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: TextFormField(
                             controller: firstnameController,
                             decoration: const InputDecoration(
-                              labelText: 'First Name',
+                              labelText: 'Nama depan',
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.person_outline),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'First name is required';
+                                return 'Nama depan wajib diisi';
                               }
                               return null;
                             },
@@ -249,13 +244,13 @@ class _ProfilePageState extends State<ProfilePage> {
                           child: TextFormField(
                             controller: lastnameController,
                             decoration: const InputDecoration(
-                              labelText: 'Last Name',
+                              labelText: 'Nama belakang',
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.person_outline),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Last name is required';
+                                return 'Nama belakang wajib diisi';
                               }
                               return null;
                             },
@@ -276,7 +271,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Email is required';
+                          return 'Email wajib diisi';
                         }
                         if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                           return 'Invalid email format';
@@ -291,7 +286,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       controller: passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        labelText: 'New Password (Leave empty to keep current)',
+                        labelText:
+                            'Kata Sandi Baru (Biarkan kosong untuk mempertahankan kata sandi saat ini)',
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.lock_outlined),
                         suffixIcon: IconButton(
@@ -311,7 +307,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         if (value != null &&
                             value.isNotEmpty &&
                             value.length < 6) {
-                          return 'Password must be at least 6 characters';
+                          return 'Kata sandi harus terdiri dari minimal 6 karakter.';
                         }
                         return null;
                       },
@@ -342,11 +338,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                   SizedBox(width: 12),
-                                  Text('Saving...'),
+                                  Text('Menyimpan...'),
                                 ],
                               )
                             : const Text(
-                                'Save Changes',
+                                'Simpan Perubahan',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -367,7 +363,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           side: const BorderSide(color: Colors.red),
                         ),
                         child: const Text(
-                          'Logout',
+                          'Keluar',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -396,18 +392,22 @@ class _ProfilePageState extends State<ProfilePage> {
               Icon(Icons.person_off, size: 80, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
-                'Please login to view your profile',
+                'Silahkan masuk untuk melihat profil anda',
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _navigateToLogin,
-                child: const Text('Login'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Masuk'),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pushNamed(context, '/register'),
-                child: const Text('Create Account'),
+                child: const Text('Buat Akun'),
               ),
             ],
           ),

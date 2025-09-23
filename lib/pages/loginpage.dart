@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (success) {
-        _showSuccessSnackBar('Login berhasil!');
+        _showSuccessSnackBar('Behasil Masuk!');
         // Wait a moment for the snackbar to be visible
         await Future.delayed(const Duration(milliseconds: 500));
         Navigator.pop(
@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
           true,
         ); // Return true to indicate successful login
       } else {
-        _showErrorSnackBar('Login gagal! Periksa email dan password.');
+        _showErrorSnackBar('Gagal Masuk! Periksa email dan password.');
       }
     } catch (e) {
       setState(() {
@@ -137,7 +137,7 @@ class _LoginPageState extends State<LoginPage> {
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submitForm(),
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: 'Kata Sandi',
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.lock_outlined),
                         suffixIcon: IconButton(
@@ -155,10 +155,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Password tidak boleh kosong';
+                          return 'Kata sandi tidak boleh kosong';
                         }
                         if (value.length < 6) {
-                          return 'Password minimal 6 karakter';
+                          return 'Kata sandi minimal 6 karakter';
                         }
                         return null;
                       },

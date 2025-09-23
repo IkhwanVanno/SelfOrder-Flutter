@@ -19,7 +19,6 @@ class _CartPageState extends State<CartPage> {
   List<CartItem> _cartItems = [];
   Map<int, Product> _productCache = {};
 
-  // Auth listener function
   late Function() _authListener;
 
   @override
@@ -32,7 +31,6 @@ class _CartPageState extends State<CartPage> {
   @override
   void dispose() {
     _tableNumberController.dispose();
-    // Remove the auth listener when disposing
     AuthService.removeAuthStateListener(_authListener);
     super.dispose();
   }
@@ -41,7 +39,6 @@ class _CartPageState extends State<CartPage> {
     _authListener = () {
       if (mounted) {
         setState(() {});
-        // Reload cart when auth state changes
         _loadCartItems();
       }
     };
@@ -63,7 +60,6 @@ class _CartPageState extends State<CartPage> {
       final cartItems = await ApiService.fetchCartItems();
       final products = await ApiService.fetchProducts();
 
-      // Cache products for easy lookup
       _productCache.clear();
       for (final product in products) {
         _productCache[product.id] = product;
@@ -74,7 +70,7 @@ class _CartPageState extends State<CartPage> {
         _isLoading = false;
       });
     } catch (e) {
-      _showErrorSnackBar('Failed to load cart: ${e.toString()}');
+      _showErrorSnackBar('Gagal memuat keranjang: ${e.toString()}');
       setState(() => _isLoading = false);
     }
   }
@@ -87,43 +83,42 @@ class _CartPageState extends State<CartPage> {
 
     try {
       await ApiService.updateCartItem(cartItemId, newQuantity);
-      await _loadCartItems(); // Refresh cart
-      _showSuccessSnackBar('Cart updated');
+      await _loadCartItems();
+      _showSuccessSnackBar('Cart diperbarui');
     } catch (e) {
-      _showErrorSnackBar('Failed to update cart: ${e.toString()}');
+      _showErrorSnackBar('Gagal memperbarui keranjang: ${e.toString()}');
     }
   }
 
   Future<void> _removeItem(int cartItemId) async {
     try {
       await ApiService.removeFromCart(cartItemId);
-      await _loadCartItems(); // Refresh cart
-      _showSuccessSnackBar('Item removed from cart');
+      await _loadCartItems();
+      _showSuccessSnackBar('Item telah dihapus dari keranjang');
     } catch (e) {
-      _showErrorSnackBar('Failed to remove item: ${e.toString()}');
+      _showErrorSnackBar('Gagal menghapus: ${e.toString()}');
     }
   }
 
   Future<void> _processOrder() async {
     if (!AuthService.isLoggedIn) {
-      _showErrorSnackBar('Please login to place an order');
+      _showErrorSnackBar('Silahkan Masuk terlebih dahulu');
       return;
     }
 
     if (_tableNumberController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter table number');
+      _showErrorSnackBar('Silahkan masukkan nomor meja');
       return;
     }
 
     if (_cartItems.isEmpty) {
-      _showErrorSnackBar('Cart is empty');
+      _showErrorSnackBar('Kerajang kosong');
       return;
     }
 
     setState(() => _isProcessingOrder = true);
 
     try {
-      // Prepare order items
       final orderItems = _cartItems.map((cartItem) {
         final product = _productCache[cartItem.productId];
         return {
@@ -133,23 +128,20 @@ class _CartPageState extends State<CartPage> {
         };
       }).toList();
 
-      // Create order with default payment method
       final order = await ApiService.createOrder(
         tableNumber: _tableNumberController.text.trim(),
-        paymentMethod: 'Cash', // Default payment method
+        paymentMethod: 'Cash',
         items: orderItems,
       );
 
-      // Clear cart after successful order
       await ApiService.clearCart();
 
       setState(() => _isProcessingOrder = false);
 
-      // Show success dialog
       _showOrderSuccessDialog(order.id, order.nomorInvoice);
     } catch (e) {
       setState(() => _isProcessingOrder = false);
-      _showErrorSnackBar('Failed to create order: ${e.toString()}');
+      _showErrorSnackBar('Gagal membuat pesanan: ${e.toString()}');
     }
   }
 
@@ -160,12 +152,12 @@ class _CartPageState extends State<CartPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Order Placed Successfully!'),
+        title: const Text('Pesanan telah berhasil dipesan.!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Your order has been placed successfully.'),
+            const Text('Pesanan Anda telah berhasil diproses.'),
             const SizedBox(height: 16),
             Text('Order ID: #$orderId'),
             Text('Invoice: $invoiceNumber'),
@@ -191,7 +183,7 @@ class _CartPageState extends State<CartPage> {
       _cartItems.clear();
       _tableNumberController.clear();
     });
-    _showSuccessSnackBar('Order completed successfully');
+    _showSuccessSnackBar('Pesanan telah selesai dengan sukses');
   }
 
   Map<String, int> _getCartSummary() {
@@ -200,16 +192,10 @@ class _CartPageState extends State<CartPage> {
       return sum + ((product?.price ?? 0) * item.quantity);
     });
 
-    const adminFee = 2500;
-    const paymentFee = 0; // No payment method selection, so no fee
-    final total = subtotal + adminFee + paymentFee;
+    const paymentFee = 0;
+    final total = subtotal + paymentFee;
 
-    return {
-      'subtotal': subtotal,
-      'adminFee': adminFee,
-      'paymentFee': paymentFee,
-      'total': total,
-    };
+    return {'subtotal': subtotal, 'paymentFee': paymentFee, 'total': total};
   }
 
   void _showErrorSnackBar(String message) {
@@ -232,10 +218,7 @@ class _CartPageState extends State<CartPage> {
   }
 
   void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login').then((_) {
-      // No need to manually call setState here anymore
-      // The auth listener will handle it automatically
-    });
+    Navigator.pushNamed(context, '/login').then((_) {});
   }
 
   @override
@@ -253,13 +236,17 @@ class _CartPageState extends State<CartPage> {
               Icon(Icons.login, size: 80, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
-                'Please login to view your cart',
+                'Silahkan masuk untuk melihat keranjang anda',
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _navigateToLogin,
-                child: const Text('Login'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Masuk'),
               ),
             ],
           ),
@@ -284,12 +271,12 @@ class _CartPageState extends State<CartPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Your cart is empty',
+            'Keranjang anda kosong',
             style: TextStyle(fontSize: 18, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
-            'Add some items to get started',
+            'Tambahkan Item untuk memulai',
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           const SizedBox(height: 16),
@@ -352,8 +339,6 @@ class _CartPageState extends State<CartPage> {
                     'Total Belanja',
                     cartSummary['subtotal'] ?? 0,
                   ),
-                  const SizedBox(height: 8),
-                  _buildSummaryRow('Biaya Admin', cartSummary['adminFee'] ?? 0),
                   const Divider(height: 24, thickness: 1),
                   _buildSummaryRow(
                     'Total Pembayaran',
@@ -394,11 +379,11 @@ class _CartPageState extends State<CartPage> {
                             ),
                           ),
                           SizedBox(width: 12),
-                          Text("Processing..."),
+                          Text("Memproses..."),
                         ],
                       )
                     : const Text(
-                        "Place Order",
+                        "Melakukan pesanan",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -469,7 +454,7 @@ class _CartPageState extends State<CartPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product?.name ?? 'Unknown Product',
+                    product?.name ?? 'Produk tidak diketahui',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -497,7 +482,6 @@ class _CartPageState extends State<CartPage> {
                 ],
               ),
             ),
-            // Quantity Controls and Delete
             Column(
               children: [
                 // Quantity Controls
