@@ -77,7 +77,7 @@ class _OrderPageState extends State<OrderPage> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackBar('Gagal memuat Order: ${e.toString()}');
+      _showErrorSnackBar('Gagal memuat pesanan: ${e.toString()}');
     }
   }
 
@@ -140,7 +140,7 @@ class _OrderPageState extends State<OrderPage> {
               if (order.payment != null) ...[
                 const Divider(height: 20),
                 const Text(
-                  'Informasi Pemabayaran:',
+                  'Informasi Pembayaran:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
@@ -290,7 +290,7 @@ class _OrderPageState extends State<OrderPage> {
             Icon(Icons.login, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Silahkan Masuk untuk melihat pesanan anda',
+              'Silahkan masuk untuk melihat pesanan anda',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
