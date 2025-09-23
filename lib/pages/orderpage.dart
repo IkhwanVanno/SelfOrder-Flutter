@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:selforder/models/payment_model.dart';
+import 'package:selforder/services/api_service.dart';
+import 'package:selforder/services/auth_service.dart';
+import 'package:selforder/models/order_model.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -9,14 +13,14 @@ class OrderPage extends StatefulWidget {
 }
 
 class _OrderPageState extends State<OrderPage> {
-  bool _isAuthenticated = false; // Simulate authentication state
   String _selectedFilter = 'All';
   final List<String> _filterOptions = [
     'All',
-    'Pending',
-    'Processing',
-    'Completed',
-    'Cancelled',
+    'Menunggu Pembayaran',
+    'Antrean',
+    'Proses',
+    'Terkirim',
+    'Dibatalkan',
   ];
 
   final DateFormat _dateFormat = DateFormat('dd-MM-yyyy HH:mm');
@@ -26,111 +30,68 @@ class _OrderPageState extends State<OrderPage> {
     decimalDigits: 0,
   );
 
-  // Dummy orders data
-  final List<Map<String, dynamic>> _allOrders = [
-    {
-      'ID': 1001,
-      'InvoiceNumber': 'INV-2024-001',
-      'TableNumber': 5,
-      'Status': 'Completed',
-      'PaymentMethod': 'Credit Card',
-      'TotalAmount': 87500,
-      'Created': DateTime.now().subtract(const Duration(hours: 2)),
-      'Items': [
-        {'ProductName': 'Cappuccino', 'Quantity': 2, 'Price': 25000},
-        {'ProductName': 'Croissant', 'Quantity': 1, 'Price': 22000},
-        {'ProductName': 'Cheesecake', 'Quantity': 1, 'Price': 40000},
-      ],
-    },
-    {
-      'ID': 1002,
-      'InvoiceNumber': 'INV-2024-002',
-      'TableNumber': 3,
-      'Status': 'Processing',
-      'PaymentMethod': 'Digital Wallet',
-      'TotalAmount': 45000,
-      'Created': DateTime.now().subtract(const Duration(minutes: 30)),
-      'Items': [
-        {'ProductName': 'Latte', 'Quantity': 1, 'Price': 28000},
-        {'ProductName': 'Muffin', 'Quantity': 1, 'Price': 18000},
-      ],
-    },
-    {
-      'ID': 1003,
-      'InvoiceNumber': 'INV-2024-003',
-      'TableNumber': 8,
-      'Status': 'Pending',
-      'PaymentMethod': 'Bank Transfer',
-      'TotalAmount': 32000,
-      'Created': DateTime.now().subtract(const Duration(minutes: 15)),
-      'Items': [
-        {'ProductName': 'Americano', 'Quantity': 1, 'Price': 18000},
-        {'ProductName': 'Green Tea', 'Quantity': 1, 'Price': 12000},
-      ],
-    },
-    {
-      'ID': 1004,
-      'InvoiceNumber': 'INV-2024-004',
-      'TableNumber': 2,
-      'Status': 'Cancelled',
-      'PaymentMethod': 'Cash',
-      'TotalAmount': 25000,
-      'Created': DateTime.now().subtract(const Duration(days: 1)),
-      'Items': [
-        {'ProductName': 'Espresso', 'Quantity': 1, 'Price': 15000},
-      ],
-    },
-    {
-      'ID': 1005,
-      'InvoiceNumber': 'INV-2024-005',
-      'TableNumber': 12,
-      'Status': 'Completed',
-      'PaymentMethod': 'Credit Card',
-      'TotalAmount': 125000,
-      'Created': DateTime.now().subtract(const Duration(days: 2)),
-      'Items': [
-        {'ProductName': 'Mocha', 'Quantity': 2, 'Price': 32000},
-        {'ProductName': 'Tiramisu', 'Quantity': 2, 'Price': 45000},
-        {'ProductName': 'Sandwich', 'Quantity': 1, 'Price': 35000},
-      ],
-    },
-  ];
+  List<Order> _allOrders = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() => _isLoading = true);
+
+    try {
+      if (!AuthService.isLoggedIn) {
+        setState(() {
+          _allOrders = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final orders = await ApiService.fetchOrders();
+      setState(() {
+        _allOrders = orders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Failed to load orders: ${e.toString()}');
+    }
+  }
 
   void _navigateToLogin() {
     Navigator.pushNamed(context, '/login').then((result) {
       if (result == true) {
-        setState(() {
-          _isAuthenticated = true;
-        });
+        _loadOrders();
       }
     });
   }
 
-  List<Map<String, dynamic>> get _filteredOrders {
+  List<Order> get _filteredOrders {
     if (_selectedFilter == 'All') {
       return _allOrders;
     }
     return _allOrders.where((order) {
-      final status = order['Status'] ?? 'Unknown';
-      return status.toLowerCase() == _selectedFilter.toLowerCase();
+      return order.status.label == _selectedFilter;
     }).toList();
   }
 
   Future<void> _refreshOrders() async {
-    // Simulate refresh
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {});
+    await _loadOrders();
   }
 
-  void _downloadReceipt(Map<String, dynamic> order) {
+  void _downloadReceipt(Order order) {
     _showSuccessSnackBar('Receipt download started (Demo)');
   }
 
-  void _shareReceipt(Map<String, dynamic> order) {
+  void _shareReceipt(Order order) {
     _showSuccessSnackBar('Receipt shared successfully (Demo)');
   }
 
-  void _showOrderDetails(Map<String, dynamic> order) {
+  void _showOrderDetails(Order order) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -140,36 +101,40 @@ class _OrderPageState extends State<OrderPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('Order ID', order['ID']?.toString() ?? 'N/A'),
-              _buildDetailRow('Invoice', order['InvoiceNumber'] ?? 'N/A'),
-              _buildDetailRow(
-                'Table Number',
-                order['TableNumber']?.toString() ?? 'N/A',
-              ),
-              _buildDetailRow('Status', order['Status'] ?? 'N/A'),
-              _buildDetailRow(
-                'Payment Method',
-                order['PaymentMethod'] ?? 'N/A',
-              ),
+              _buildDetailRow('Order ID', order.id.toString()),
+              _buildDetailRow('Invoice', order.nomorInvoice),
+              _buildDetailRow('Table Number', order.nomorMeja),
+              _buildDetailRow('Status', order.status.label),
               _buildDetailRow(
                 'Total Amount',
-                _currencyFormat.format(order['TotalAmount'] ?? 0),
+                _currencyFormat.format(order.totalHarga),
               ),
-              _buildDetailRow('Date', _formatDate(order['Created'])),
-              if (order['Items'] != null) ...[
-                const SizedBox(height: 16),
+              _buildDetailRow(
+                'Item Total',
+                _currencyFormat.format(order.totalHargaBarang),
+              ),
+              _buildDetailRow(
+                'Payment Fee',
+                _currencyFormat.format(order.paymentFee),
+              ),
+              _buildDetailRow('Date', _formatDate(order.created)),
+              if (order.member != null) ...[
+                const SizedBox(height: 8),
                 const Text(
-                  'Items:',
+                  'Customer:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                ...((order['Items'] as List).map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(left: 8, top: 4),
-                    child: Text(
-                      '• ${item['ProductName']} x${item['Quantity']} - Rp ${_formatCurrencySimple(item['Price'])}',
-                    ),
-                  ),
-                )),
+                Text('${order.member!.fullName} (${order.member!.email})'),
+              ],
+              if (order.payment != null) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Payment:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text('Method: ${order.payment!.metodePembayaran}'),
+                Text('Status: ${order.payment!.status.label}'),
+                Text('Reference: ${order.payment!.reference}'),
               ],
             ],
           ),
@@ -216,58 +181,24 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-  String _formatDate(dynamic date) {
-    if (date == null) return 'N/A';
-
-    DateTime dateTime;
-    if (date is String) {
-      dateTime = DateTime.tryParse(date) ?? DateTime.now();
-    } else if (date is DateTime) {
-      dateTime = date;
-    } else {
-      return 'N/A';
-    }
-
-    return _dateFormat.format(dateTime);
-  }
-
-  String _formatCurrencySimple(int amount) {
-    return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange;
-      case 'processing':
-        return Colors.blue;
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+  String _formatDate(DateTime date) {
+    return _dateFormat.format(date);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Simulate authentication - for demo, set to true after a delay
-    if (!_isAuthenticated) {
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          setState(() {
-            _isAuthenticated = true;
-          });
-        }
-      });
+    if (!AuthService.isLoggedIn) {
+      return _buildNotAuthenticatedView();
     }
 
-    if (!_isAuthenticated) {
-      return _buildNotAuthenticatedView();
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -328,22 +259,24 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Widget _buildNotAuthenticatedView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.login, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'Please login to view your orders',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _navigateToLogin,
-            child: const Text('Login'),
-          ),
-        ],
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.login, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Please login to view your orders',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _navigateToLogin,
+              child: const Text('Login'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -384,10 +317,7 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
-    final status = order['Status'] ?? 'Unknown';
-    final statusColor = _getStatusColor(status);
-
+  Widget _buildOrderCard(Order order) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -403,7 +333,7 @@ class _OrderPageState extends State<OrderPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Order #${order['ID'] ?? 'N/A'}',
+                    'Order #${order.id}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -415,14 +345,14 @@ class _OrderPageState extends State<OrderPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withAlpha(25),
+                      color: order.status.color.withAlpha(25),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: statusColor),
+                      border: Border.all(color: order.status.color),
                     ),
                     child: Text(
-                      status,
+                      order.status.label,
                       style: TextStyle(
-                        color: statusColor,
+                        color: order.status.color,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -440,9 +370,10 @@ class _OrderPageState extends State<OrderPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Invoice: ${order['InvoiceNumber'] ?? 'N/A'}'),
-                        Text('Table: ${order['TableNumber'] ?? 'N/A'}'),
-                        Text('Payment: ${order['PaymentMethod'] ?? 'N/A'}'),
+                        Text('Invoice: ${order.nomorInvoice}'),
+                        Text('Table: ${order.nomorMeja}'),
+                        if (order.payment != null)
+                          Text('Payment: ${order.payment!.metodePembayaran}'),
                       ],
                     ),
                   ),
@@ -450,7 +381,7 @@ class _OrderPageState extends State<OrderPage> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _currencyFormat.format(order['TotalAmount'] ?? 0),
+                        _currencyFormat.format(order.totalHarga),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -458,7 +389,7 @@ class _OrderPageState extends State<OrderPage> {
                         ),
                       ),
                       Text(
-                        _formatDate(order['Created']),
+                        _formatDate(order.created),
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],

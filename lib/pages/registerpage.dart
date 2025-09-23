@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:selforder/config/app_config.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -28,27 +31,38 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> submitForm() async {
     if (!formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    // Simulate registration process
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Registration successful! Please login.'),
-        backgroundColor: Colors.green,
-      ),
+    final url = Uri.parse('${ApiConfig.baseUrl}/register');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'FirstName': firstnameController.text.trim(),
+        'Surname': lastnameController.text.trim(),
+        'Email': emailController.text.trim(),
+        'Password': passwordController.text,
+      }),
     );
 
-    // Navigate to login
-    Navigator.pushReplacementNamed(context, '/login');
+    setState(() => _isLoading = false);
+
+    if (response.statusCode == 201) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pendaftaran berhasil'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pendaftaran gagal'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override

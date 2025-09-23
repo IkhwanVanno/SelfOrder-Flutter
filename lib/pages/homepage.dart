@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:selforder/services/api_service.dart';
+import 'package:selforder/services/auth_service.dart';
+import 'package:selforder/models/product_model.dart';
 
 class _CategoryItem {
   final String image;
@@ -8,24 +11,6 @@ class _CategoryItem {
   const _CategoryItem({
     required this.image,
     required this.label,
-    this.categoryId,
-  });
-}
-
-class Product {
-  final int id;
-  final String name;
-  final int price;
-  final String image;
-  final bool available;
-  final int? categoryId;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.image,
-    this.available = true,
     this.categoryId,
   });
 }
@@ -43,161 +28,78 @@ class _HomePageState extends State<HomePage> {
   List<Product> _filteredProducts = [];
   int? _selectedCategoryId;
   Map<int, int> _cartQuantities = {};
+  Map<int, int> _guestCartQuantities = {};
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadDummyData();
+    _loadDataFromApi();
+    _loadCartQuantities();
   }
 
-  void _loadDummyData() {
-    // Dummy categories
-    _categories = [
-      const _CategoryItem(
-        image: "images/cafe.png",
-        label: "All",
-        categoryId: null,
-      ),
-      const _CategoryItem(
-        image: "images/coffee.png",
-        label: "Coffee",
-        categoryId: 1,
-      ),
-      const _CategoryItem(image: "images/tea.png", label: "Tea", categoryId: 2),
-      const _CategoryItem(
-        image: "images/snack.png",
-        label: "Snacks",
-        categoryId: 3,
-      ),
-      const _CategoryItem(
-        image: "images/dessert.png",
-        label: "Desserts",
-        categoryId: 4,
-      ),
-    ];
+  Future<void> _loadDataFromApi() async {
+    setState(() => _isLoading = true);
 
-    // Dummy products
-    _products = [
-      Product(
-        id: 1,
-        name: "Espresso",
-        price: 15000,
-        image: "images/espresso.jpg",
-        categoryId: 1,
-      ),
-      Product(
-        id: 2,
-        name: "Cappuccino",
-        price: 25000,
-        image: "images/cappuccino.jpg",
-        categoryId: 1,
-      ),
-      Product(
-        id: 3,
-        name: "Latte",
-        price: 28000,
-        image: "images/latte.jpg",
-        categoryId: 1,
-      ),
-      Product(
-        id: 4,
-        name: "Americano",
-        price: 18000,
-        image: "images/americano.jpg",
-        categoryId: 1,
-      ),
-      Product(
-        id: 5,
-        name: "Mocha",
-        price: 32000,
-        image: "images/mocha.jpg",
-        categoryId: 1,
-      ),
-      Product(
-        id: 6,
-        name: "Green Tea",
-        price: 12000,
-        image: "images/green_tea.jpg",
-        categoryId: 2,
-      ),
-      Product(
-        id: 7,
-        name: "Earl Grey",
-        price: 15000,
-        image: "images/earl_grey.jpg",
-        categoryId: 2,
-      ),
-      Product(
-        id: 8,
-        name: "Jasmine Tea",
-        price: 13000,
-        image: "images/jasmine.jpg",
-        categoryId: 2,
-      ),
-      Product(
-        id: 9,
-        name: "Croissant",
-        price: 22000,
-        image: "images/croissant.jpg",
-        categoryId: 3,
-      ),
-      Product(
-        id: 10,
-        name: "Sandwich",
-        price: 35000,
-        image: "images/sandwich.jpg",
-        categoryId: 3,
-      ),
-      Product(
-        id: 11,
-        name: "Muffin",
-        price: 18000,
-        image: "images/muffin.jpg",
-        categoryId: 3,
-      ),
-      Product(
-        id: 12,
-        name: "Cheesecake",
-        price: 40000,
-        image: "images/cheesecake.jpg",
-        categoryId: 4,
-      ),
-      Product(
-        id: 13,
-        name: "Tiramisu",
-        price: 45000,
-        image: "images/tiramisu.jpg",
-        categoryId: 4,
-      ),
-      Product(
-        id: 14,
-        name: "Chocolate Cake",
-        price: 38000,
-        image: "images/chocolate_cake.jpg",
-        categoryId: 4,
-      ),
-      Product(
-        id: 15,
-        name: "Ice Cream",
-        price: 20000,
-        image: "images/ice_cream.jpg",
-        categoryId: 4,
-        available: false,
-      ),
-    ];
+    try {
+      final categoriesFromApi = await ApiService.fetchCategories();
+      final productsFromApi = await ApiService.fetchProducts();
 
-    _filterProducts();
-    setState(() {});
+      setState(() {
+        _categories = [
+          const _CategoryItem(
+            image: "images/cafe.png",
+            label: "All",
+            categoryId: null,
+          ),
+          ...categoriesFromApi.map(
+            (c) => _CategoryItem(
+              image: c.imageURL,
+              label: c.name,
+              categoryId: c.id,
+            ),
+          ),
+        ];
+        _products = productsFromApi;
+        _filterProducts();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error: $e');
+      _showErrorSnackBar("Failed to load data from server");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadCartQuantities() async {
+    if (!AuthService.isLoggedIn) {
+      return;
+    }
+
+    try {
+      final cartItems = await ApiService.fetchCartItems();
+      final quantities = <int, int>{};
+
+      for (final item in cartItems) {
+        quantities[item.productId] = item.quantity;
+      }
+
+      setState(() {
+        _cartQuantities = quantities;
+      });
+    } catch (e) {
+      print('Error loading cart quantities: $e');
+    }
   }
 
   void _filterProducts() {
-    if (_selectedCategoryId == null) {
-      _filteredProducts = _products;
-    } else {
-      _filteredProducts = _products
-          .where((product) => product.categoryId == _selectedCategoryId)
-          .toList();
-    }
+    setState(() {
+      _filteredProducts = _selectedCategoryId == null
+          ? _products
+          : _products
+                .where((product) => product.categoryId == _selectedCategoryId)
+                .toList();
+    });
   }
 
   void _selectCategory(int? categoryId) {
@@ -207,23 +109,74 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _addToCart(Product product) {
-    setState(() {
-      _cartQuantities[product.id] = (_cartQuantities[product.id] ?? 0) + 1;
-    });
+  void _addToCart(Product product) async {
+    if (!AuthService.isLoggedIn) {
+      setState(() {
+        _guestCartQuantities[product.id] =
+            (_guestCartQuantities[product.id] ?? 0) + 1;
+      });
+      _showSuccessSnackBar('${product.name} added to cart (guest mode)');
+      return;
+    }
 
-    _showSuccessSnackBar('${product.name} added to cart');
+    try {
+      await ApiService.addToCart(product.id, 1);
+      await _loadCartQuantities();
+      _showSuccessSnackBar('${product.name} added to cart');
+    } catch (e) {
+      _showErrorSnackBar('Failed to add to cart: ${e.toString()}');
+    }
   }
 
-  void _updateCartQuantity(Product product, int newQuantity) {
-    setState(() {
+  void _updateCartQuantity(Product product, int newQuantity) async {
+    if (!AuthService.isLoggedIn) {
+      setState(() {
+        if (newQuantity <= 0) {
+          _guestCartQuantities.remove(product.id);
+          _showSuccessSnackBar(
+            '${product.name} removed from cart (guest mode)',
+          );
+        } else {
+          _guestCartQuantities[product.id] = newQuantity;
+        }
+      });
+      return;
+    }
+
+    try {
+      final currentCartQuantity = _cartQuantities[product.id] ?? 0;
+
       if (newQuantity <= 0) {
-        _cartQuantities.remove(product.id);
+        final cartItems = await ApiService.fetchCartItems();
+        final cartItem = cartItems.firstWhere(
+          (item) => item.productId == product.id,
+          orElse: () => throw Exception('Cart item not found'),
+        );
+        await ApiService.removeFromCart(cartItem.id);
         _showSuccessSnackBar('${product.name} removed from cart');
+      } else if (currentCartQuantity == 0) {
+        await ApiService.addToCart(product.id, newQuantity);
       } else {
-        _cartQuantities[product.id] = newQuantity;
+        final cartItems = await ApiService.fetchCartItems();
+        final cartItem = cartItems.firstWhere(
+          (item) => item.productId == product.id,
+          orElse: () => throw Exception('Cart item not found'),
+        );
+        await ApiService.updateCartItem(cartItem.id, newQuantity);
       }
-    });
+
+      await _loadCartQuantities();
+    } catch (e) {
+      _showErrorSnackBar('Failed to update cart: ${e.toString()}');
+    }
+  }
+
+  int _getCartQuantity(int productId) {
+    if (AuthService.isLoggedIn) {
+      return _cartQuantities[productId] ?? 0;
+    } else {
+      return _guestCartQuantities[productId] ?? 0;
+    }
   }
 
   void _showSuccessSnackBar(String message) {
@@ -232,6 +185,16 @@ class _HomePageState extends State<HomePage> {
         content: Text(message),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -246,15 +209,42 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          await Future.delayed(const Duration(seconds: 1));
-          _loadDummyData();
+          await _loadDataFromApi();
+          await _loadCartQuantities();
         },
         child: Column(
           children: [
-            // Categories Section
+            if (!AuthService.isLoggedIn)
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(top: 8),
+                color: Colors.orange[100],
+                child: Row(
+                  children: [
+                    const Icon(Icons.info, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'You are in guest mode. Login to sync your cart across devices.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/login').then((_) {
+                            setState(() {});
+                            _loadCartQuantities();
+                          }),
+                      child: const Text(
+                        'Login',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             _buildCategoriesSection(),
             const SizedBox(height: 12),
-            // Products Section
             _buildProductsSection(crossAxisCount),
           ],
         ),
@@ -264,7 +254,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildCategoriesSection() {
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.only(top: 16),
       child: SizedBox(
         height: 80,
         child: ListView.separated(
@@ -289,13 +279,21 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset(
-                      category.image,
-                      height: 30,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Image.asset("images/cafe.png", height: 30);
-                      },
-                    ),
+                    category.image.startsWith('http')
+                        ? Image.network(
+                            category.image,
+                            height: 30,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset("images/cafe.png", height: 30);
+                            },
+                          )
+                        : Image.asset(
+                            category.image,
+                            height: 30,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset("images/cafe.png", height: 30);
+                            },
+                          ),
                     const SizedBox(height: 4),
                     Text(
                       category.label,
@@ -317,6 +315,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProductsSection(int crossAxisCount) {
+    if (_isLoading) {
+      return const Expanded(child: Center(child: CircularProgressIndicator()));
+    }
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -333,8 +335,7 @@ class _HomePageState extends State<HomePage> {
                 itemBuilder: (context, index) {
                   return ProductCard(
                     product: _filteredProducts[index],
-                    cartQuantity:
-                        _cartQuantities[_filteredProducts[index].id] ?? 0,
+                    cartQuantity: _getCartQuantity(_filteredProducts[index].id),
                     onAddToCart: () => _addToCart(_filteredProducts[index]),
                     onUpdateQuantity: (quantity) =>
                         _updateCartQuantity(_filteredProducts[index], quantity),
@@ -359,7 +360,7 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
-          TextButton(onPressed: _loadDummyData, child: const Text('Refresh')),
+          TextButton(onPressed: _loadDataFromApi, child: const Text('Refresh')),
         ],
       ),
     );
@@ -390,24 +391,42 @@ class ProductCard extends StatelessWidget {
         children: [
           Stack(
             children: [
-              Image.asset(
-                product.image,
-                height: 150,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 150,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      size: 50,
-                      color: Colors.grey,
-                    ),
-                  );
-                },
-              ),
+              product.imageURL.startsWith('http')
+                  ? Image.network(
+                      product.imageURL,
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 150,
+                          width: double.infinity,
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.broken_image, size: 50),
+                        );
+                      },
+                    )
+                  : (product.imageURL.isNotEmpty
+                        ? Image.asset(
+                            product.imageURL,
+                            height: 150,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 150,
+                                width: double.infinity,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.broken_image, size: 50),
+                              );
+                            },
+                          )
+                        : Container(
+                            height: 150,
+                            width: double.infinity,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image, size: 50),
+                          )),
               Positioned(
                 top: 8,
                 left: 8,
@@ -423,7 +442,7 @@ class ProductCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    product.available ? "Tersedia" : "Habis",
+                    product.available ? "Available" : "Out of Stock",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -502,7 +521,7 @@ class ProductCard extends StatelessWidget {
         ),
         child: const Center(
           child: Text(
-            'Tidak Tersedia',
+            'Not Available',
             style: TextStyle(
               color: Colors.grey,
               fontSize: 12,
@@ -575,9 +594,11 @@ class ProductCard extends StatelessWidget {
   }
 
   String _formatCurrency(int amount) {
-    return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+    return amount
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
   }
 }

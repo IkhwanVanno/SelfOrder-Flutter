@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:selforder/models/siteconfig_model.dart';
+import 'package:selforder/services/api_service.dart';
 import 'package:selforder/pages/loginpage.dart';
 import 'package:selforder/pages/profilepage.dart';
 import 'package:selforder/pages/registerpage.dart';
 import 'package:selforder/pages/cartpage.dart';
 import 'package:selforder/pages/homepage.dart';
 import 'package:selforder/pages/orderpage.dart';
+import 'package:selforder/services/auth_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -59,12 +62,51 @@ class _MainPageState extends State<MainPage> {
   Map<String, dynamic>? _currentUser;
   int _cartItemCount = 0;
 
+  SiteConfig? _siteConfig;
+  bool _isLoadingConfig = true;
+
   final List<Widget> _pages = const [
     HomePage(),
     OrderPage(),
     CartPage(),
     ProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSiteConfig();
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    final user = await AuthService.fetchCurrentMember();
+    if (user != null) {
+      setState(() {
+        _isAuthenticated = true;
+        _currentUser = {
+          'FirstName': user.firstName,
+          'Surname': user.surname,
+          'Email': user.email,
+        };
+      });
+    }
+  }
+
+  void _loadSiteConfig() async {
+    try {
+      final config = await ApiService.fetchSiteConfig();
+      setState(() {
+        _siteConfig = config;
+        _isLoadingConfig = false;
+      });
+    } catch (e) {
+      print('Error loading site config: $e');
+      setState(() {
+        _isLoadingConfig = false;
+      });
+    }
+  }
 
   void _onButtonNavTapped(int index) {
     setState(() {
@@ -88,73 +130,89 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _handleLogout() async {
-    final shouldLogout = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        content: const Text('Apakah kamu yakin ingin keluar?'),
         actions: [
           TextButton(
+            child: const Text('Batal'),
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Logout'),
+            onPressed: () => Navigator.pop(context, true),
           ),
         ],
       ),
     );
 
-    if (shouldLogout == true) {
-      setState(() {
-        _isAuthenticated = false;
-        _currentUser = null;
-        _cartItemCount = 0;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Logged out successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    if (confirm == true) {
+      final result = await AuthService.logout();
+      if (result) {
+        setState(() {
+          _isAuthenticated = false;
+          _currentUser = null;
+          _cartItemCount = 0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logout berhasil'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal logout'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-
-  // void _updateCartCount(int count) {
-  //   setState(() {
-  //     _cartItemCount = count;
-  //   });
-  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.blue,
         automaticallyImplyLeading: false,
-        title: Stack(
-          alignment: Alignment.center,
-          children: [
-            const Text(
-              'SelfOrder',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+        title: _isLoadingConfig
+            ? const Text("Loading...")
+            : Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    _siteConfig?.title ?? "SelfOrder",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _siteConfig != null &&
+                              _siteConfig!.imageURL.startsWith("http")
+                          ? Image.network(
+                              _siteConfig!.imageURL,
+                              height: 30,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  "images/cafe.png",
+                                  height: 30,
+                                );
+                              },
+                            )
+                          : Image.asset("images/cafe.png", height: 30),
+                      _buildAuthButton(),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Image.asset("images/cafe.png", height: 30),
-                _buildAuthButton(),
-              ],
-            ),
-          ],
-        ),
       ),
       body: IndexedStack(index: _bottomNavIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
@@ -302,74 +360,5 @@ class _MainPageState extends State<MainPage> {
     } else {
       return user['Email']?.split('@')[0] ?? 'User';
     }
-  }
-}
-
-// Error Handler Widget
-class ErrorHandler extends StatelessWidget {
-  final String message;
-  final VoidCallback? onRetry;
-
-  const ErrorHandler({super.key, required this.message, this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Oops! Something went wrong',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Loading Widget
-class LoadingWidget extends StatelessWidget {
-  final String? message;
-
-  const LoadingWidget({super.key, this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(message!, style: TextStyle(color: Colors.grey[600])),
-          ],
-        ],
-      ),
-    );
   }
 }

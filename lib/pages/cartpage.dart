@@ -1,20 +1,8 @@
 import 'package:flutter/material.dart';
-
-class CartItem {
-  final int productId;
-  final String name;
-  final String image;
-  final int price;
-  int quantity;
-
-  CartItem({
-    required this.productId,
-    required this.name,
-    required this.image,
-    required this.price,
-    required this.quantity,
-  });
-}
+import 'package:selforder/models/cartitem_model.dart';
+import 'package:selforder/models/product_model.dart';
+import 'package:selforder/services/api_service.dart';
+import 'package:selforder/services/auth_service.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -33,32 +21,17 @@ class _CartPageState extends State<CartPage> {
     'Bank Transfer',
     'Cash',
   ];
-  bool _isProcessingOrder = false;
 
-  // Dummy cart items
-  List<CartItem> _cartItems = [
-    CartItem(
-      productId: 1,
-      name: "Cappuccino",
-      image: "images/cappuccino.jpg",
-      price: 25000,
-      quantity: 2,
-    ),
-    CartItem(
-      productId: 2,
-      name: "Croissant",
-      image: "images/croissant.jpg",
-      price: 22000,
-      quantity: 1,
-    ),
-    CartItem(
-      productId: 3,
-      name: "Cheesecake",
-      image: "images/cheesecake.jpg",
-      price: 40000,
-      quantity: 1,
-    ),
-  ];
+  bool _isProcessingOrder = false;
+  bool _isLoading = true;
+  List<CartItem> _cartItems = [];
+  Map<int, Product> _productCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCartItems();
+  }
 
   @override
   void dispose() {
@@ -66,30 +39,68 @@ class _CartPageState extends State<CartPage> {
     super.dispose();
   }
 
-  void _updateQuantity(int productId, int newQuantity) {
-    setState(() {
-      final index = _cartItems.indexWhere(
-        (item) => item.productId == productId,
-      );
-      if (index != -1) {
-        if (newQuantity <= 0) {
-          _cartItems.removeAt(index);
-          _showSuccessSnackBar('Item removed from cart');
-        } else {
-          _cartItems[index].quantity = newQuantity;
-        }
+  Future<void> _loadCartItems() async {
+    setState(() => _isLoading = true);
+
+    try {
+      if (!AuthService.isLoggedIn) {
+        setState(() {
+          _cartItems = [];
+          _isLoading = false;
+        });
+        return;
       }
-    });
+
+      final cartItems = await ApiService.fetchCartItems();
+      final products = await ApiService.fetchProducts();
+
+      // Cache products for easy lookup
+      _productCache.clear();
+      for (final product in products) {
+        _productCache[product.id] = product;
+      }
+
+      setState(() {
+        _cartItems = cartItems;
+        _isLoading = false;
+      });
+    } catch (e) {
+      _showErrorSnackBar('Failed to load cart: ${e.toString()}');
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _removeItem(int productId) {
-    setState(() {
-      _cartItems.removeWhere((item) => item.productId == productId);
-    });
-    _showSuccessSnackBar('Item removed from cart');
+  void _updateQuantity(int cartItemId, int newQuantity) async {
+    if (newQuantity <= 0) {
+      await _removeItem(cartItemId);
+      return;
+    }
+
+    try {
+      await ApiService.updateCartItem(cartItemId, newQuantity);
+      await _loadCartItems(); // Refresh cart
+      _showSuccessSnackBar('Cart updated');
+    } catch (e) {
+      _showErrorSnackBar('Failed to update cart: ${e.toString()}');
+    }
+  }
+
+  Future<void> _removeItem(int cartItemId) async {
+    try {
+      await ApiService.removeFromCart(cartItemId);
+      await _loadCartItems(); // Refresh cart
+      _showSuccessSnackBar('Item removed from cart');
+    } catch (e) {
+      _showErrorSnackBar('Failed to remove item: ${e.toString()}');
+    }
   }
 
   Future<void> _processOrder() async {
+    if (!AuthService.isLoggedIn) {
+      _showErrorSnackBar('Please login to place an order');
+      return;
+    }
+
     if (_tableNumberController.text.isEmpty) {
       _showErrorSnackBar('Please enter table number');
       return;
@@ -105,22 +116,40 @@ class _CartPageState extends State<CartPage> {
       return;
     }
 
-    setState(() {
-      _isProcessingOrder = true;
-    });
+    setState(() => _isProcessingOrder = true);
 
-    // Simulate processing delay
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Prepare order items
+      final orderItems = _cartItems.map((cartItem) {
+        final product = _productCache[cartItem.productId];
+        return {
+          'ProductID': cartItem.productId,
+          'Kuantitas': cartItem.quantity,
+          'HargaSatuan': product?.price ?? 0,
+        };
+      }).toList();
 
-    setState(() {
-      _isProcessingOrder = false;
-    });
+      // Create order
+      final order = await ApiService.createOrder(
+        tableNumber: _tableNumberController.text,
+        paymentMethod: _selectedPaymentMethod!,
+        items: orderItems,
+      );
 
-    // Show success dialog
-    _showOrderSuccessDialog();
+      // Clear cart after successful order
+      await ApiService.clearCart();
+
+      setState(() => _isProcessingOrder = false);
+
+      // Show success dialog
+      _showOrderSuccessDialog(order.id, order.nomorInvoice);
+    } catch (e) {
+      setState(() => _isProcessingOrder = false);
+      _showErrorSnackBar('Failed to create order: ${e.toString()}');
+    }
   }
 
-  void _showOrderSuccessDialog() {
+  void _showOrderSuccessDialog(int orderId, String invoiceNumber) {
     final cartSummary = _getCartSummary();
 
     showDialog(
@@ -134,9 +163,8 @@ class _CartPageState extends State<CartPage> {
           children: [
             const Text('Your order has been placed successfully.'),
             const SizedBox(height: 16),
-            Text(
-              'Order ID: #${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-            ),
+            Text('Order ID: #$orderId'),
+            Text('Invoice: $invoiceNumber'),
             Text('Table: ${_tableNumberController.text}'),
             Text('Payment Method: $_selectedPaymentMethod'),
             Text('Total: Rp ${_formatCurrency(cartSummary['total'] ?? 0)}'),
@@ -146,7 +174,7 @@ class _CartPageState extends State<CartPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _clearCart();
+              _clearCartUI();
             },
             child: const Text('OK'),
           ),
@@ -155,19 +183,19 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  void _clearCart() {
+  void _clearCartUI() {
     setState(() {
       _cartItems.clear();
       _tableNumberController.clear();
     });
-    _showSuccessSnackBar('Cart cleared');
+    _showSuccessSnackBar('Order completed successfully');
   }
 
   Map<String, int> _getCartSummary() {
-    final subtotal = _cartItems.fold<int>(
-      0,
-      (sum, item) => sum + (item.price * item.quantity),
-    );
+    final subtotal = _cartItems.fold<int>(0, (sum, item) {
+      final product = _productCache[item.productId];
+      return sum + ((product?.price ?? 0) * item.quantity);
+    });
 
     const adminFee = 2500;
     final paymentFee = _getPaymentFee();
@@ -215,6 +243,33 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!AuthService.isLoggedIn) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.login, size: 80, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Please login to view your cart',
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pushNamed(context, '/login'),
+                child: const Text('Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: _cartItems.isEmpty ? _buildEmptyCart() : _buildCartContent(),
     );
@@ -240,6 +295,11 @@ class _CartPageState extends State<CartPage> {
             'Add some items to get started',
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadCartItems,
+            child: const Text('Refresh'),
+          ),
         ],
       ),
     );
@@ -248,110 +308,117 @@ class _CartPageState extends State<CartPage> {
   Widget _buildCartContent() {
     final cartSummary = _getCartSummary();
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Cart Items List
-          Expanded(
-            child: ListView.builder(
-              itemCount: _cartItems.length,
-              itemBuilder: (context, index) {
-                final item = _cartItems[index];
-                return _buildCartItemCard(item);
+    return RefreshIndicator(
+      onRefresh: _loadCartItems,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Cart Items List
+            Expanded(
+              child: ListView.builder(
+                itemCount: _cartItems.length,
+                itemBuilder: (context, index) {
+                  final item = _cartItems[index];
+                  final product = _productCache[item.productId];
+                  return _buildCartItemCard(item, product);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Table Number
+            TextField(
+              controller: _tableNumberController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Nomor Meja',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Payment Method
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                labelText: 'Metode Pembayaran',
+                border: OutlineInputBorder(),
+              ),
+              initialValue: _selectedPaymentMethod,
+              onChanged: (value) {
+                setState(() {
+                  _selectedPaymentMethod = value;
+                });
               },
+              items: _paymentMethods.map((method) {
+                return DropdownMenuItem(value: method, child: Text(method));
+              }).toList(),
             ),
-          ),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
-          // Table Number
-          TextField(
-            controller: _tableNumberController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Nomor Meja',
-              border: OutlineInputBorder(),
+            // Payment Summary
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _buildSummaryRow(
+                    'Total Belanja',
+                    cartSummary['subtotal'] ?? 0,
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSummaryRow('Biaya Admin', cartSummary['adminFee'] ?? 0),
+                  const SizedBox(height: 4),
+                  _buildSummaryRow(
+                    'Biaya Payment',
+                    cartSummary['paymentFee'] ?? 0,
+                  ),
+                  const Divider(height: 24, thickness: 1),
+                  _buildSummaryRow(
+                    'Total Pembayaran',
+                    cartSummary['total'] ?? 0,
+                    bold: true,
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-          // Payment Method
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: 'Metode Pembayaran',
-              border: OutlineInputBorder(),
+            // Process Order Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isProcessingOrder ? null : _processOrder,
+                child: _isProcessingOrder
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 12),
+                          Text("Processing..."),
+                        ],
+                      )
+                    : const Text("Lanjut Pembayaran"),
+              ),
             ),
-            initialValue: _selectedPaymentMethod,
-            onChanged: (value) {
-              setState(() {
-                _selectedPaymentMethod = value;
-              });
-            },
-            items: _paymentMethods.map((method) {
-              return DropdownMenuItem(value: method, child: Text(method));
-            }).toList(),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Payment Summary
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                _buildSummaryRow('Total Belanja', cartSummary['subtotal'] ?? 0),
-                const SizedBox(height: 4),
-                _buildSummaryRow('Biaya Admin', cartSummary['adminFee'] ?? 0),
-                const SizedBox(height: 4),
-                _buildSummaryRow(
-                  'Biaya Payment',
-                  cartSummary['paymentFee'] ?? 0,
-                ),
-                const Divider(height: 24, thickness: 1),
-                _buildSummaryRow(
-                  'Total Pembayaran',
-                  cartSummary['total'] ?? 0,
-                  bold: true,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Process Order Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isProcessingOrder ? null : _processOrder,
-              child: _isProcessingOrder
-                  ? const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 12),
-                        Text("Processing..."),
-                      ],
-                    )
-                  : const Text("Lanjut Pembayaran"),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCartItemCard(CartItem item) {
+  Widget _buildCartItemCard(CartItem item, Product? product) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
@@ -362,20 +429,42 @@ class _CartPageState extends State<CartPage> {
             // Product Image
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                item.image,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_not_supported),
-                  );
-                },
-              ),
+              child: product?.imageURL != null && product!.imageURL.isNotEmpty
+                  ? (product.imageURL.startsWith('http')
+                        ? Image.network(
+                            product.imageURL,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported),
+                              );
+                            },
+                          )
+                        : Image.asset(
+                            product.imageURL,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported),
+                              );
+                            },
+                          ))
+                  : Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported),
+                    ),
             ),
             const SizedBox(width: 12),
             // Product Details
@@ -384,7 +473,7 @@ class _CartPageState extends State<CartPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.name,
+                    product?.name ?? 'Unknown Product',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -392,7 +481,7 @@ class _CartPageState extends State<CartPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rp ${_formatCurrency(item.price)}',
+                    'Rp ${_formatCurrency(product?.price ?? 0)}',
                     style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
@@ -406,13 +495,13 @@ class _CartPageState extends State<CartPage> {
                   children: [
                     IconButton(
                       onPressed: () =>
-                          _updateQuantity(item.productId, item.quantity - 1),
+                          _updateQuantity(item.id, item.quantity - 1),
                       icon: const Icon(Icons.remove),
                     ),
                     Text('${item.quantity}'),
                     IconButton(
                       onPressed: () =>
-                          _updateQuantity(item.productId, item.quantity + 1),
+                          _updateQuantity(item.id, item.quantity + 1),
                       icon: const Icon(Icons.add),
                     ),
                   ],
@@ -420,7 +509,7 @@ class _CartPageState extends State<CartPage> {
                 // Delete Button
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeItem(item.productId),
+                  onPressed: () => _removeItem(item.id),
                 ),
               ],
             ),

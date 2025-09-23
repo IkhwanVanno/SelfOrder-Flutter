@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selforder/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,34 +24,26 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate login process
-    await Future.delayed(const Duration(seconds: 2));
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    final success = await AuthService.login(email, password);
 
     setState(() {
       _isLoading = false;
     });
 
-    // Dummy login validation
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email == "demo@example.com" && password == "demo123") {
-      _showSuccessSnackBar('Login successful');
-      Navigator.pop(context, true); // Return true to indicate successful login
-    } else if (email.isNotEmpty && password.length >= 6) {
-      // Accept any valid email format and password >= 6 characters
-      _showSuccessSnackBar('Login successful');
+    if (success) {
+      _showSuccessSnackBar('Login berhasil!');
       Navigator.pop(context, true);
     } else {
-      _showErrorSnackBar('Invalid credentials');
+      _showErrorSnackBar('Login gagal! Periksa email dan password.');
     }
   }
 
