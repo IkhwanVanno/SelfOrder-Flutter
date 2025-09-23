@@ -19,21 +19,70 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _obscurePassword = true;
   Member? _currentUser;
 
+  // Auth listener function
+  late Function() _authListener;
+
   @override
   void initState() {
     super.initState();
+    _setupAuthListener();
     _loadUserData();
   }
 
+  @override
+  void dispose() {
+    firstnameController.dispose();
+    lastnameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    // Remove the auth listener when disposing
+    AuthService.removeAuthStateListener(_authListener);
+    super.dispose();
+  }
+
+  void _setupAuthListener() {
+    _authListener = () {
+      if (mounted) {
+        setState(() {});
+        if (AuthService.isLoggedIn) {
+          _loadUserData();
+        } else {
+          _currentUser = null;
+          _clearForm();
+        }
+      }
+    };
+    AuthService.addAuthStateListener(_authListener);
+  }
+
+  void _clearForm() {
+    firstnameController.clear();
+    lastnameController.clear();
+    emailController.clear();
+    passwordController.clear();
+  }
+
   void _loadUserData() async {
+    if (!AuthService.isLoggedIn) {
+      setState(() {
+        _currentUser = null;
+        _isLoading = false;
+      });
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final user = await AuthService.fetchCurrentMember();
+      Member? user = AuthService.currentUser;
+      if (user == null) {
+        user = await AuthService.fetchCurrentMember();
+      }
+
       if (user != null) {
         setState(() {
           _currentUser = user;
-          firstnameController.text = user.firstName;
+          firstnameController.text = user!.firstName;
           lastnameController.text = user.surname;
           emailController.text = user.email;
           _isLoading = false;
@@ -45,15 +94,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isLoading = false);
       _showErrorSnackBar('Failed to load profile: ${e.toString()}');
     }
-  }
-
-  @override
-  void dispose() {
-    firstnameController.dispose();
-    lastnameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
   }
 
   Future<void> submitForm() async {
@@ -74,11 +114,8 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isLoading = false);
 
       if (success) {
-        passwordController
-            .clear(); // Clear password field after successful update
+        passwordController.clear();
         _showSuccessSnackBar('Profile updated successfully!');
-
-        // Reload user data to reflect changes
         _loadUserData();
       } else {
         _showErrorSnackBar('Failed to update profile');
@@ -103,7 +140,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Logout'),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -117,22 +154,30 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isLoading = false);
 
       _showSuccessSnackBar('Logged out successfully');
-
-      // Navigate to login or refresh the app state
-      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
+  void _navigateToLogin() {
+    Navigator.pushNamed(context, '/login').then((_) {
+      // No need to manually call setState here anymore
+      // The auth listener will handle it automatically
+    });
+  }
+
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
   }
 
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.green),
+      );
+    }
   }
 
   @override
@@ -166,7 +211,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             backgroundColor: Colors.blue.withAlpha(25),
                             child: Text(
                               _currentUser != null
-                                  ? '${_currentUser!.firstName[0]}${_currentUser!.surname[0]}'
+                                  ? '${_currentUser!.firstName.isNotEmpty ? _currentUser!.firstName[0] : 'U'}${_currentUser!.surname.isNotEmpty ? _currentUser!.surname[0] : ''}'
                                   : 'U',
                               style: const TextStyle(
                                 fontSize: 24,
@@ -175,69 +220,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                              ),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                onPressed: () {
-                                  _showSuccessSnackBar(
-                                    'Change photo feature (Demo)',
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // User Info
-                    if (_currentUser != null) ...[
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Account Information',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text('ID: ${_currentUser!.id}'),
-                              Text('Full Name: ${_currentUser!.fullName}'),
-                              Text('Email: ${_currentUser!.email}'),
-                              if (_currentUser!.groups.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Groups:',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
-                                ),
-                                ..._currentUser!.groups.map(
-                                  (group) =>
-                                      Text('• ${group.title} (${group.code})'),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                    const SizedBox(height: 64),
 
                     // Firstname & Lastname
                     Row(
@@ -415,11 +401,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/login').then((_) {
-                      setState(() {}); // Refresh UI after login
-                      _loadUserData();
-                    }),
+                onPressed: _navigateToLogin,
                 child: const Text('Login'),
               ),
               const SizedBox(height: 8),

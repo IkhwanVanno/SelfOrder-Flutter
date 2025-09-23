@@ -31,11 +31,32 @@ class _HomePageState extends State<HomePage> {
   Map<int, int> _guestCartQuantities = {};
   bool _isLoading = false;
 
+  // Auth listener function
+  late Function() _authListener;
+
   @override
   void initState() {
     super.initState();
+    _setupAuthListener();
     _loadDataFromApi();
     _loadCartQuantities();
+  }
+
+  @override
+  void dispose() {
+    // Remove the auth listener when disposing
+    AuthService.removeAuthStateListener(_authListener);
+    super.dispose();
+  }
+
+  void _setupAuthListener() {
+    _authListener = () {
+      if (mounted) {
+        setState(() {});
+        _loadCartQuantities();
+      }
+    };
+    AuthService.addAuthStateListener(_authListener);
   }
 
   Future<void> _loadDataFromApi() async {
@@ -232,8 +253,8 @@ class _HomePageState extends State<HomePage> {
                     TextButton(
                       onPressed: () =>
                           Navigator.pushNamed(context, '/login').then((_) {
-                            setState(() {});
-                            _loadCartQuantities();
+                            // No need to manually call setState here anymore
+                            // The auth listener will handle it automatically
                           }),
                       child: const Text(
                         'Login',

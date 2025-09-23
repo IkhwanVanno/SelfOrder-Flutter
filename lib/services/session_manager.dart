@@ -21,25 +21,47 @@ class SessionManager {
   ) async {
     await _prefs?.setBool(_keyIsLoggedIn, true);
     await _prefs?.setString(_keyUserData, jsonEncode(userData));
+
     if (cookie != null) {
-      await _prefs?.setString(_keySessionCookie, cookie);
-      _sessionCookie = cookie;
+      // Extract session ID from cookie
+      String sessionId = cookie.split(';')[0];
+      await _prefs?.setString(_keySessionCookie, sessionId);
+      _sessionCookie = sessionId;
     }
+
+    print(
+      'Session saved - isLoggedIn: true, cookie: ${_sessionCookie != null}',
+    );
+  }
+
+  static Future<void> updateUserData(Map<String, dynamic> userData) async {
+    await _prefs?.setString(_keyUserData, jsonEncode(userData));
+    print('User data updated');
   }
 
   static Future<void> clearSession() async {
-    await _prefs?.clear();
+    await _prefs?.setBool(_keyIsLoggedIn, false);
+    await _prefs?.remove(_keyUserData);
+    await _prefs?.remove(_keySessionCookie);
     _sessionCookie = null;
+    print('Session cleared');
   }
 
   static bool get isLoggedIn {
-    return _prefs?.getBool(_keyIsLoggedIn) ?? false;
+    bool loggedIn = _prefs?.getBool(_keyIsLoggedIn) ?? false;
+    print('Checking isLoggedIn: $loggedIn');
+    return loggedIn;
   }
 
   static Map<String, dynamic>? get currentUser {
     final userDataString = _prefs?.getString(_keyUserData);
     if (userDataString != null) {
-      return jsonDecode(userDataString);
+      try {
+        return jsonDecode(userDataString);
+      } catch (e) {
+        print('Error parsing user data: $e');
+        return null;
+      }
     }
     return null;
   }
@@ -62,8 +84,10 @@ class SessionManager {
   static void updateSessionFromResponse(http.Response response) {
     final setCookieHeader = response.headers['set-cookie'];
     if (setCookieHeader != null) {
-      _sessionCookie = setCookieHeader.split(';')[0];
-      _prefs?.setString(_keySessionCookie, _sessionCookie!);
+      String sessionId = setCookieHeader.split(';')[0];
+      _sessionCookie = sessionId;
+      _prefs?.setString(_keySessionCookie, sessionId);
+      print('Session cookie updated from response: $sessionId');
     }
   }
 }

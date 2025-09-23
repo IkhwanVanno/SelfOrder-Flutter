@@ -7,8 +7,31 @@ import 'session_manager.dart';
 class AuthService {
   static Member? _currentUser;
 
+  // Changed to List to support multiple listeners
+  static List<Function()> _authStateListeners = [];
+
   static Member? get currentUser => _currentUser;
-  static bool get isLoggedIn => SessionManager.isLoggedIn;
+  static bool get isLoggedIn =>
+      SessionManager.isLoggedIn && _currentUser != null;
+
+  // Add listener method
+  static void addAuthStateListener(Function() listener) {
+    if (!_authStateListeners.contains(listener)) {
+      _authStateListeners.add(listener);
+    }
+  }
+
+  // Remove listener method
+  static void removeAuthStateListener(Function() listener) {
+    _authStateListeners.remove(listener);
+  }
+
+  // Legacy support for single callback (backward compatibility)
+  static set onAuthStateChanged(Function()? callback) {
+    if (callback != null) {
+      addAuthStateListener(callback);
+    }
+  }
 
   static Future<void> init() async {
     await SessionManager.init();
@@ -16,11 +39,13 @@ class AuthService {
     if (SessionManager.isLoggedIn) {
       final userData = SessionManager.currentUser;
       if (userData != null) {
-        _currentUser = Member.fromJson(userData);
-
         try {
+          _currentUser = Member.fromJson(userData);
+          // Verify session is still valid
           await fetchCurrentMember();
+          _notifyAllAuthStateListeners();
         } catch (e) {
+          print('Session invalid, logging out: $e');
           await logout();
         }
       }
@@ -46,8 +71,11 @@ class AuthService {
         final cookie = response.headers['set-cookie'];
         await SessionManager.saveSession(data['user'], cookie);
 
+        _notifyAllAuthStateListeners();
         return true;
       } else {
+        print('Login failed with status: ${response.statusCode}');
+        print('Response body: ${response.body}');
         return false;
       }
     } catch (e) {
@@ -86,6 +114,8 @@ class AuthService {
   }
 
   static Future<Member?> fetchCurrentMember() async {
+    if (!SessionManager.isLoggedIn) return null;
+
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}/currentMemberr');
       final response = await http.get(
@@ -97,13 +127,17 @@ class AuthService {
         final data = jsonDecode(response.body);
         _currentUser = Member.fromJson(data['user']);
 
-        await SessionManager.saveSession(data['user'], null);
+        // Update stored user data
+        await SessionManager.updateUserData(data['user']);
+        _notifyAllAuthStateListeners();
         return _currentUser;
       } else if (response.statusCode == 401) {
         await logout();
         return null;
+      } else {
+        print('Fetch current member failed: ${response.statusCode}');
+        return null;
       }
-      return null;
     } catch (e) {
       print('Fetch current member error: $e');
       return null;
@@ -140,7 +174,8 @@ class AuthService {
         final data = jsonDecode(response.body);
         _currentUser = Member.fromJson(data['data']);
 
-        await SessionManager.saveSession(data['data'], null);
+        await SessionManager.updateUserData(data['data']);
+        _notifyAllAuthStateListeners();
         return true;
       }
       return false;
@@ -152,16 +187,36 @@ class AuthService {
 
   static Future<bool> logout() async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/logout');
-      await http.post(url, headers: SessionManager.getHeaders());
-
-      _currentUser = null;
-      await SessionManager.clearSession();
-      return true;
+      if (SessionManager.isLoggedIn) {
+        final url = Uri.parse('${ApiConfig.baseUrl}/logout');
+        await http.post(url, headers: SessionManager.getHeaders());
+      }
     } catch (e) {
+      print('Logout API error: $e');
+    } finally {
       _currentUser = null;
       await SessionManager.clearSession();
-      return true;
+      _notifyAllAuthStateListeners();
     }
+    return true;
+  }
+
+  static void _notifyAllAuthStateListeners() {
+    // Create a copy of the list to avoid concurrent modification
+    final listeners = List<Function()>.from(_authStateListeners);
+    for (final listener in listeners) {
+      try {
+        listener();
+      } catch (e) {
+        print('Error calling auth state listener: $e');
+        // Remove problematic listener
+        _authStateListeners.remove(listener);
+      }
+    }
+  }
+
+  // Method to clear all listeners (useful for cleanup)
+  static void clearAuthStateListeners() {
+    _authStateListeners.clear();
   }
 }

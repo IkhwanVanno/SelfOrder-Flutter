@@ -33,10 +33,31 @@ class _OrderPageState extends State<OrderPage> {
   List<Order> _allOrders = [];
   bool _isLoading = true;
 
+  // Auth listener function
+  late Function() _authListener;
+
   @override
   void initState() {
     super.initState();
+    _setupAuthListener();
     _loadOrders();
+  }
+
+  @override
+  void dispose() {
+    // Remove the auth listener when disposing
+    AuthService.removeAuthStateListener(_authListener);
+    super.dispose();
+  }
+
+  void _setupAuthListener() {
+    _authListener = () {
+      if (mounted) {
+        setState(() {});
+        _loadOrders();
+      }
+    };
+    AuthService.addAuthStateListener(_authListener);
   }
 
   Future<void> _loadOrders() async {
@@ -64,9 +85,8 @@ class _OrderPageState extends State<OrderPage> {
 
   void _navigateToLogin() {
     Navigator.pushNamed(context, '/login').then((result) {
-      if (result == true) {
-        _loadOrders();
-      }
+      // No need to manually call setState here anymore
+      // The auth listener will handle it automatically
     });
   }
 
@@ -83,25 +103,16 @@ class _OrderPageState extends State<OrderPage> {
     await _loadOrders();
   }
 
-  void _downloadReceipt(Order order) {
-    _showSuccessSnackBar('Receipt download started (Demo)');
-  }
-
-  void _shareReceipt(Order order) {
-    _showSuccessSnackBar('Receipt shared successfully (Demo)');
-  }
-
   void _showOrderDetails(Order order) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Order Details'),
+        title: Text('Order Details #${order.id}'),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('Order ID', order.id.toString()),
               _buildDetailRow('Invoice', order.nomorInvoice),
               _buildDetailRow('Table Number', order.nomorMeja),
               _buildDetailRow('Status', order.status.label),
@@ -119,22 +130,26 @@ class _OrderPageState extends State<OrderPage> {
               ),
               _buildDetailRow('Date', _formatDate(order.created)),
               if (order.member != null) ...[
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 const Text(
-                  'Customer:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  'Customer Information:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                Text('${order.member!.fullName} (${order.member!.email})'),
+                const SizedBox(height: 8),
+                Text('Name: ${order.member!.fullName}'),
+                Text('Email: ${order.member!.email}'),
               ],
               if (order.payment != null) ...[
-                const SizedBox(height: 8),
+                const Divider(height: 20),
                 const Text(
-                  'Payment:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  'Payment Information:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
+                const SizedBox(height: 8),
                 Text('Method: ${order.payment!.metodePembayaran}'),
                 Text('Status: ${order.payment!.status.label}'),
-                Text('Reference: ${order.payment!.reference}'),
+                if (order.payment!.reference.isNotEmpty)
+                  Text('Reference: ${order.payment!.reference}'),
               ],
             ],
           ),
@@ -144,13 +159,6 @@ class _OrderPageState extends State<OrderPage> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _downloadReceipt(order);
-            },
-            child: const Text('Download Receipt'),
-          ),
         ],
       ),
     );
@@ -158,32 +166,41 @@ class _OrderPageState extends State<OrderPage> {
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 100,
             child: Text(
               '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(child: Text(value)),
         ],
       ),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
@@ -207,39 +224,47 @@ class _OrderPageState extends State<OrderPage> {
         child: Column(
           children: [
             // Filter Section
-            Padding(
+            Container(
               padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Filter by Status:',
-                    style: TextStyle(fontWeight: FontWeight.w500),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _filterOptions.map((filter) {
-                          final isSelected = _selectedFilter == filter;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              label: Text(filter),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    _selectedFilter = filter;
-                                  });
-                                }
-                              },
-                              selectedColor: Colors.blue.withAlpha(51),
-                              checkmarkColor: Colors.blue,
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _filterOptions.map((filter) {
+                        final isSelected = _selectedFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: Text(filter),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() {
+                                  _selectedFilter = filter;
+                                });
+                              }
+                            },
+                            selectedColor: Colors.blue.withAlpha(51),
+                            checkmarkColor: Colors.blue,
+                            backgroundColor: Colors.grey[100],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? Colors.blue
+                                    : Colors.grey[300]!,
+                              ),
                             ),
-                          );
-                        }).toList(),
-                      ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
                 ],
@@ -273,6 +298,10 @@ class _OrderPageState extends State<OrderPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _navigateToLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Login'),
             ),
           ],
@@ -320,9 +349,11 @@ class _OrderPageState extends State<OrderPage> {
   Widget _buildOrderCard(Order order) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () => _showOrderDetails(order),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -341,8 +372,8 @@ class _OrderPageState extends State<OrderPage> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: order.status.color.withAlpha(25),
@@ -354,14 +385,14 @@ class _OrderPageState extends State<OrderPage> {
                       style: TextStyle(
                         color: order.status.color,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
 
               // Order Details
               Row(
@@ -370,10 +401,55 @@ class _OrderPageState extends State<OrderPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Invoice: ${order.nomorInvoice}'),
-                        Text('Table: ${order.nomorMeja}'),
-                        if (order.payment != null)
-                          Text('Payment: ${order.payment!.metodePembayaran}'),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.receipt,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              order.nomorInvoice,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.table_restaurant,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Table ${order.nomorMeja}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        if (order.payment != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.payment,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                order.payment!.metodePembayaran,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -388,9 +464,23 @@ class _OrderPageState extends State<OrderPage> {
                           color: Colors.green,
                         ),
                       ),
-                      Text(
-                        _formatDate(order.created),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(order.created),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -399,22 +489,21 @@ class _OrderPageState extends State<OrderPage> {
 
               const SizedBox(height: 12),
 
-              // Action Buttons
+              // Action Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton.icon(
-                    onPressed: () => _shareReceipt(order),
-                    icon: const Icon(Icons.share, size: 16),
-                    label: const Text('Share'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: () => _downloadReceipt(order),
-                    icon: const Icon(Icons.download, size: 16),
-                    label: const Text('Download'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.green),
+                    onPressed: () => _showOrderDetails(order),
+                    icon: const Icon(Icons.info_outline, size: 16),
+                    label: const Text('View Details'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),

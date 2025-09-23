@@ -13,30 +13,39 @@ class CartPage extends StatefulWidget {
 
 class _CartPageState extends State<CartPage> {
   final TextEditingController _tableNumberController = TextEditingController();
-  String? _selectedPaymentMethod = 'Credit Card';
-  final List<String> _paymentMethods = [
-    'Credit Card',
-    'Debit Card',
-    'Digital Wallet',
-    'Bank Transfer',
-    'Cash',
-  ];
 
   bool _isProcessingOrder = false;
   bool _isLoading = true;
   List<CartItem> _cartItems = [];
   Map<int, Product> _productCache = {};
 
+  // Auth listener function
+  late Function() _authListener;
+
   @override
   void initState() {
     super.initState();
+    _setupAuthListener();
     _loadCartItems();
   }
 
   @override
   void dispose() {
     _tableNumberController.dispose();
+    // Remove the auth listener when disposing
+    AuthService.removeAuthStateListener(_authListener);
     super.dispose();
+  }
+
+  void _setupAuthListener() {
+    _authListener = () {
+      if (mounted) {
+        setState(() {});
+        // Reload cart when auth state changes
+        _loadCartItems();
+      }
+    };
+    AuthService.addAuthStateListener(_authListener);
   }
 
   Future<void> _loadCartItems() async {
@@ -101,18 +110,13 @@ class _CartPageState extends State<CartPage> {
       return;
     }
 
-    if (_tableNumberController.text.isEmpty) {
+    if (_tableNumberController.text.trim().isEmpty) {
       _showErrorSnackBar('Please enter table number');
       return;
     }
 
     if (_cartItems.isEmpty) {
       _showErrorSnackBar('Cart is empty');
-      return;
-    }
-
-    if (_selectedPaymentMethod == null) {
-      _showErrorSnackBar('Please select payment method');
       return;
     }
 
@@ -129,10 +133,10 @@ class _CartPageState extends State<CartPage> {
         };
       }).toList();
 
-      // Create order
+      // Create order with default payment method
       final order = await ApiService.createOrder(
-        tableNumber: _tableNumberController.text,
-        paymentMethod: _selectedPaymentMethod!,
+        tableNumber: _tableNumberController.text.trim(),
+        paymentMethod: 'Cash', // Default payment method
         items: orderItems,
       );
 
@@ -166,7 +170,6 @@ class _CartPageState extends State<CartPage> {
             Text('Order ID: #$orderId'),
             Text('Invoice: $invoiceNumber'),
             Text('Table: ${_tableNumberController.text}'),
-            Text('Payment Method: $_selectedPaymentMethod'),
             Text('Total: Rp ${_formatCurrency(cartSummary['total'] ?? 0)}'),
           ],
         ),
@@ -198,7 +201,7 @@ class _CartPageState extends State<CartPage> {
     });
 
     const adminFee = 2500;
-    final paymentFee = _getPaymentFee();
+    const paymentFee = 0; // No payment method selection, so no fee
     final total = subtotal + adminFee + paymentFee;
 
     return {
@@ -207,19 +210,6 @@ class _CartPageState extends State<CartPage> {
       'paymentFee': paymentFee,
       'total': total,
     };
-  }
-
-  int _getPaymentFee() {
-    switch (_selectedPaymentMethod) {
-      case 'Credit Card':
-        return 2000;
-      case 'Digital Wallet':
-        return 1500;
-      case 'Bank Transfer':
-        return 3000;
-      default:
-        return 0;
-    }
   }
 
   void _showErrorSnackBar(String message) {
@@ -239,6 +229,13 @@ class _CartPageState extends State<CartPage> {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]}.',
     );
+  }
+
+  void _navigateToLogin() {
+    Navigator.pushNamed(context, '/login').then((_) {
+      // No need to manually call setState here anymore
+      // The auth listener will handle it automatically
+    });
   }
 
   @override
@@ -261,7 +258,7 @@ class _CartPageState extends State<CartPage> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => Navigator.pushNamed(context, '/login'),
+                onPressed: _navigateToLogin,
                 child: const Text('Login'),
               ),
             ],
@@ -331,30 +328,12 @@ class _CartPageState extends State<CartPage> {
             // Table Number
             TextField(
               controller: _tableNumberController,
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.text,
               decoration: const InputDecoration(
                 labelText: 'Nomor Meja',
                 border: OutlineInputBorder(),
+                hintText: 'Masukkan nomor meja',
               ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Payment Method
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Metode Pembayaran',
-                border: OutlineInputBorder(),
-              ),
-              initialValue: _selectedPaymentMethod,
-              onChanged: (value) {
-                setState(() {
-                  _selectedPaymentMethod = value;
-                });
-              },
-              items: _paymentMethods.map((method) {
-                return DropdownMenuItem(value: method, child: Text(method));
-              }).toList(),
             ),
 
             const SizedBox(height: 20),
@@ -363,8 +342,9 @@ class _CartPageState extends State<CartPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
               ),
               child: Column(
                 children: [
@@ -372,13 +352,8 @@ class _CartPageState extends State<CartPage> {
                     'Total Belanja',
                     cartSummary['subtotal'] ?? 0,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   _buildSummaryRow('Biaya Admin', cartSummary['adminFee'] ?? 0),
-                  const SizedBox(height: 4),
-                  _buildSummaryRow(
-                    'Biaya Payment',
-                    cartSummary['paymentFee'] ?? 0,
-                  ),
                   const Divider(height: 24, thickness: 1),
                   _buildSummaryRow(
                     'Total Pembayaran',
@@ -394,8 +369,16 @@ class _CartPageState extends State<CartPage> {
             // Process Order Button
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton(
                 onPressed: _isProcessingOrder ? null : _processOrder,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
                 child: _isProcessingOrder
                     ? const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -403,13 +386,24 @@ class _CartPageState extends State<CartPage> {
                           SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
                           ),
                           SizedBox(width: 12),
                           Text("Processing..."),
                         ],
                       )
-                    : const Text("Lanjut Pembayaran"),
+                    : const Text(
+                        "Place Order",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -421,8 +415,10 @@ class _CartPageState extends State<CartPage> {
   Widget _buildCartItemCard(CartItem item, Product? product) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -433,13 +429,13 @@ class _CartPageState extends State<CartPage> {
                   ? (product.imageURL.startsWith('http')
                         ? Image.network(
                             product.imageURL,
-                            width: 60,
-                            height: 60,
+                            width: 70,
+                            height: 70,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                width: 60,
-                                height: 60,
+                                width: 70,
+                                height: 70,
                                 color: Colors.grey[300],
                                 child: const Icon(Icons.image_not_supported),
                               );
@@ -447,21 +443,21 @@ class _CartPageState extends State<CartPage> {
                           )
                         : Image.asset(
                             product.imageURL,
-                            width: 60,
-                            height: 60,
+                            width: 70,
+                            height: 70,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                width: 60,
-                                height: 60,
+                                width: 70,
+                                height: 70,
                                 color: Colors.grey[300],
                                 child: const Icon(Icons.image_not_supported),
                               );
                             },
                           ))
                   : Container(
-                      width: 60,
-                      height: 60,
+                      width: 70,
+                      height: 70,
                       color: Colors.grey[300],
                       child: const Icon(Icons.image_not_supported),
                     ),
@@ -478,38 +474,84 @@ class _CartPageState extends State<CartPage> {
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Rp ${_formatCurrency(product?.price ?? 0)}',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Subtotal: Rp ${_formatCurrency((product?.price ?? 0) * item.quantity)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
             ),
             // Quantity Controls and Delete
-            Row(
+            Column(
               children: [
                 // Quantity Controls
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () =>
-                          _updateQuantity(item.id, item.quantity - 1),
-                      icon: const Icon(Icons.remove),
-                    ),
-                    Text('${item.quantity}'),
-                    IconButton(
-                      onPressed: () =>
-                          _updateQuantity(item.id, item.quantity + 1),
-                      icon: const Icon(Icons.add),
-                    ),
-                  ],
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () =>
+                            _updateQuantity(item.id, item.quantity - 1),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: const Icon(Icons.remove, size: 16),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          '${item.quantity}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () =>
+                            _updateQuantity(item.id, item.quantity + 1),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: const Icon(Icons.add, size: 16),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 8),
                 // Delete Button
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeItem(item.id),
+                InkWell(
+                  onTap: () => _removeItem(item.id),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 16,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -527,13 +569,15 @@ class _CartPageState extends State<CartPage> {
           title,
           style: TextStyle(
             fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            fontSize: bold ? 16 : 14,
           ),
         ),
         Text(
           'Rp ${_formatCurrency(value)}',
           style: TextStyle(
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            color: bold ? Colors.green : null,
+            fontWeight: bold ? FontWeight.bold : FontWeight.w600,
+            fontSize: bold ? 16 : 14,
+            color: bold ? Colors.green : Colors.green[700],
           ),
         ),
       ],

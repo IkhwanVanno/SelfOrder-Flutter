@@ -33,17 +33,29 @@ class _LoginPageState extends State<LoginPage> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    final success = await AuthService.login(email, password);
+    try {
+      final success = await AuthService.login(email, password);
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (success) {
-      _showSuccessSnackBar('Login berhasil!');
-      Navigator.pop(context, true);
-    } else {
-      _showErrorSnackBar('Login gagal! Periksa email dan password.');
+      if (success) {
+        _showSuccessSnackBar('Login berhasil!');
+        // Wait a moment for the snackbar to be visible
+        await Future.delayed(const Duration(milliseconds: 500));
+        Navigator.pop(
+          context,
+          true,
+        ); // Return true to indicate successful login
+      } else {
+        _showErrorSnackBar('Login gagal! Periksa email dan password.');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('Error: ${e.toString()}');
     }
   }
 
@@ -53,13 +65,21 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -85,36 +105,6 @@ class _LoginPageState extends State<LoginPage> {
                     // Logo
                     Image.asset("images/cafe.png", height: 100),
                     const SizedBox(height: 32),
-
-                    // Demo credentials info
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withAlpha(25),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withAlpha(25)),
-                      ),
-                      child: const Column(
-                        children: [
-                          Text(
-                            'Demo Credentials',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(height: 4),
-                          Text('Email: demo@example.com'),
-                          Text('Password: demo123'),
-                          SizedBox(height: 4),
-                          Text(
-                            'Or use any valid email and password (min 6 chars)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
 
                     // Email Field
                     TextFormField(
@@ -233,44 +223,6 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Divider
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: Colors.grey[400])),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'atau',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Colors.grey[400])),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Guest Login Button
-                    OutlinedButton.icon(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                            },
-                      icon: const Icon(Icons.person_outline),
-                      label: const Text('Lanjutkan sebagai Tamu'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey[700],
-                        side: BorderSide(color: Colors.grey[400]!),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
