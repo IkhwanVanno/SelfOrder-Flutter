@@ -24,11 +24,6 @@ class _OrderPageState extends State<OrderPage> {
   ];
 
   final DateFormat _dateFormat = DateFormat('dd-MM-yyyy HH:mm');
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
 
   List<Order> _allOrders = [];
   bool _isLoading = true;
@@ -82,10 +77,7 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login').then((result) {
-      // No need to manually call setState here anymore
-      // The auth listener will handle it automatically
-    });
+    Navigator.pushNamed(context, '/login').then((result) {});
   }
 
   List<Order> get _filteredOrders {
@@ -114,18 +106,10 @@ class _OrderPageState extends State<OrderPage> {
               _buildDetailRow('Invoice', order.nomorInvoice),
               _buildDetailRow('Table Number', order.nomorMeja),
               _buildDetailRow('Status', order.status.label),
-              _buildDetailRow(
-                'Total Amount',
-                _currencyFormat.format(order.totalHarga),
-              ),
-              _buildDetailRow(
-                'Item Total',
-                _currencyFormat.format(order.totalHargaBarang),
-              ),
-              _buildDetailRow(
-                'Payment Fee',
-                _currencyFormat.format(order.paymentFee),
-              ),
+              _buildDetailRow('Total Amount', 'Rp ${order.totalHarga}'),
+
+              _buildDetailRow('Item Total', 'Rp ${order.totalHargaBarang}'),
+              _buildDetailRow('Payment Fee', 'Rp ${order.paymentFee}'),
               _buildDetailRow('Date', _formatDate(order.created)),
               if (order.member != null) ...[
                 const Divider(height: 20),
@@ -455,7 +439,7 @@ class _OrderPageState extends State<OrderPage> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _currencyFormat.format(order.totalHarga),
+                        'Rp ${order.totalHarga}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

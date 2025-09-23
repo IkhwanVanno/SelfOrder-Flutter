@@ -61,15 +61,15 @@ class Payment {
   factory Payment.fromJson(Map<String, dynamic> json) {
     return Payment(
       id: json['ID'],
-      reference: json['Reference'] ?? '',
-      totalHarga: (json['TotalHarga'] as num).toDouble(),
+      reference: (json['Reference'] ?? '').toString(),
+      totalHarga: (json['TotalHarga'] ?? 0).toDouble(),
       status: PaymentStatusExtension.fromString(json['Status'] ?? ''),
-      metodePembayaran: json['MetodePembayaran'] ?? '',
-      duitkuTransactionId: json['DuitkuTransactionID'] ?? '',
-      paymentUrl: json['PaymentUrl'] ?? '',
-      expiryTime: DateTime.parse(json['ExpiryTime']),
-      created: DateTime.parse(json['Created']),
-      updated: DateTime.parse(json['Updated']),
+      metodePembayaran: (json['MetodePembayaran'] ?? '').toString(),
+      duitkuTransactionId: (json['DuitkuTransactionID'] ?? '').toString(),
+      paymentUrl: (json['PaymentUrl'] ?? '').toString(),
+      expiryTime: DateTime.tryParse(json['ExpiryTime'] ?? '') ?? DateTime.now(),
+      created: DateTime.tryParse(json['Created'] ?? '') ?? DateTime.now(),
+      updated: DateTime.tryParse(json['Updated'] ?? '') ?? DateTime.now(),
     );
   }
 }

@@ -81,13 +81,15 @@ class Order {
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
       id: json['ID'],
-      totalHarga: (json['TotalHarga'] as num).toDouble(),
-      totalHargaBarang: (json['TotalHargaBarang'] as num).toDouble(),
-      paymentFee: (json['PaymentFee'] as num).toDouble(),
-      status: OrderStatusExtension.fromString(json['Status'] ?? 'Antrean'),
-      nomorInvoice: json['NomorInvoice'] ?? '',
-      nomorMeja: json['NomorMeja'] ?? '',
-      created: DateTime.parse(json['Created']),
+      totalHarga: (json['TotalHarga'] ?? 0).toDouble(),
+      totalHargaBarang: (json['TotalHargaBarang'] ?? 0).toDouble(),
+      paymentFee: (json['PaymentFee'] ?? 0).toDouble(),
+      status: OrderStatusExtension.fromString(
+        (json['Status'] ?? '').toString(),
+      ),
+      nomorInvoice: (json['NomorInvoice'] ?? '').toString(),
+      nomorMeja: (json['NomorMeja'] ?? '').toString(),
+      created: DateTime.tryParse(json['Created'] ?? '') ?? DateTime.now(),
       member: json['Member'] != null ? Member.fromJson(json['Member']) : null,
       payment: json['Payment'] != null
           ? Payment.fromJson(json['Payment'])
