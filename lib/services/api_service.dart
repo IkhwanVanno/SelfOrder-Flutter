@@ -12,7 +12,7 @@ import 'package:selforder/models/siteconfig_model.dart';
 import 'session_manager.dart';
 
 class ApiService {
-  static final String _baseUrl = ApiConfig.baseUrl;
+  static final String _baseUrl = AppConfig.baseUrl;
   static void _handleResponse(http.Response response) {
     SessionManager.updateSessionFromResponse(response);
 

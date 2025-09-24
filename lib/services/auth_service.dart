@@ -54,7 +54,7 @@ class AuthService {
 
   static Future<bool> login(String email, String password) async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/login');
+      final url = Uri.parse('${AppConfig.baseUrl}/login');
       final response = await http.post(
         url,
         headers: {
@@ -91,7 +91,7 @@ class AuthService {
     String password,
   ) async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/register');
+      final url = Uri.parse('${AppConfig.baseUrl}/register');
       final response = await http.post(
         url,
         headers: {
@@ -117,7 +117,7 @@ class AuthService {
     if (!SessionManager.isLoggedIn) return null;
 
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/currentMemberr');
+      final url = Uri.parse('${AppConfig.baseUrl}/currentMemberr');
       final response = await http.get(
         url,
         headers: SessionManager.getHeaders(),
@@ -153,7 +153,7 @@ class AuthService {
     if (_currentUser == null) return false;
 
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/member/${_currentUser!.id}');
+      final url = Uri.parse('${AppConfig.baseUrl}/member/${_currentUser!.id}');
       final body = <String, dynamic>{
         'FirstName': firstName,
         'Surname': lastName,
@@ -188,7 +188,7 @@ class AuthService {
   static Future<bool> logout() async {
     try {
       if (SessionManager.isLoggedIn) {
-        final url = Uri.parse('${ApiConfig.baseUrl}/logout');
+        final url = Uri.parse('${AppConfig.baseUrl}/logout');
         await http.post(url, headers: SessionManager.getHeaders());
       }
     } catch (e) {

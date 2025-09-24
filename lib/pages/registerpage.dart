@@ -33,7 +33,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('${ApiConfig.baseUrl}/register');
+    final url = Uri.parse('${AppConfig.baseUrl}/register');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
