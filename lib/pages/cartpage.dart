@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:selforder/models/cartitem_model.dart';
+import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -16,8 +18,11 @@ class _CartPageState extends State<CartPage> {
 
   bool _isProcessingOrder = false;
   bool _isLoading = true;
+  bool _isLoadingPaymentMethods = false;
   List<CartItem> _cartItems = [];
   Map<int, Product> _productCache = {};
+  List<PaymentMethod> _paymentMethods = [];
+  PaymentMethod? _selectedPaymentMethod;
 
   late Function() _authListener;
 
@@ -69,9 +74,35 @@ class _CartPageState extends State<CartPage> {
         _cartItems = cartItems;
         _isLoading = false;
       });
+
+      // Load payment methods after cart items are loaded
+      if (_cartItems.isNotEmpty) {
+        await _loadPaymentMethods();
+      }
     } catch (e) {
       _showErrorSnackBar('Gagal memuat keranjang: ${e.toString()}');
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadPaymentMethods() async {
+    final cartSummary = _getCartSummary();
+    final totalAmount = cartSummary['total'] ?? 0;
+
+    if (totalAmount <= 0) return;
+
+    setState(() => _isLoadingPaymentMethods = true);
+
+    try {
+      final paymentMethods = await ApiService.fetchPaymentMethods(totalAmount);
+      setState(() {
+        _paymentMethods = paymentMethods;
+        _selectedPaymentMethod = null;
+        _isLoadingPaymentMethods = false;
+      });
+    } catch (e) {
+      _showErrorSnackBar('Gagal memuat metode pembayaran: ${e.toString()}');
+      setState(() => _isLoadingPaymentMethods = false);
     }
   }
 
@@ -111,8 +142,13 @@ class _CartPageState extends State<CartPage> {
       return;
     }
 
+    if (_selectedPaymentMethod == null) {
+      _showErrorSnackBar('Silahkan pilih metode pembayaran');
+      return;
+    }
+
     if (_cartItems.isEmpty) {
-      _showErrorSnackBar('Kerajang kosong');
+      _showErrorSnackBar('Keranjang kosong');
       return;
     }
 
@@ -128,60 +164,97 @@ class _CartPageState extends State<CartPage> {
         };
       }).toList();
 
-      final order = await ApiService.createOrder(
+      final result = await ApiService.createOrderWithPayment(
         tableNumber: _tableNumberController.text.trim(),
-        paymentMethod: 'Cash',
+        paymentMethod: _selectedPaymentMethod!.paymentMethod,
         items: orderItems,
       );
 
+      // Clear cart after successful order creation
       await ApiService.clearCart();
 
       setState(() => _isProcessingOrder = false);
 
-      _showOrderSuccessDialog(order.id, order.nomorInvoice);
+      // Show success and redirect to payment
+      _showPaymentDialog(result);
     } catch (e) {
       setState(() => _isProcessingOrder = false);
       _showErrorSnackBar('Gagal membuat pesanan: ${e.toString()}');
     }
   }
 
-  void _showOrderSuccessDialog(int orderId, String invoiceNumber) {
-    final cartSummary = _getCartSummary();
+  void _showPaymentDialog(Map<String, dynamic> orderResult) {
+    final order = orderResult['order'];
+    final paymentUrl = order['payment_url'];
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Pesanan telah berhasil dipesan.!'),
+        title: const Text('Pesanan Berhasil Dibuat!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Pesanan Anda telah berhasil diproses.'),
+            const Text('Pesanan Anda telah berhasil dibuat.'),
             const SizedBox(height: 16),
-            Text('Order ID: #$orderId'),
-            Text('Invoice: $invoiceNumber'),
-            Text('Table: ${_tableNumberController.text}'),
-            Text('Total: Rp ${_formatCurrency(cartSummary['total'] ?? 0)}'),
+            Text('Invoice: ${order['NomorInvoice']}'),
+            Text(
+              'Total: Rp ${_formatCurrency(order['TotalHarga']?.toInt() ?? 0)}',
+            ),
+            Text('Meja: ${order['NomorMeja']}'),
+            Text('Pembayaran: ${_selectedPaymentMethod?.paymentName}'),
+            const SizedBox(height: 16),
+            const Text(
+              'Anda akan diarahkan ke halaman pembayaran Duitku.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
           ],
         ),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _clearCartUI();
             },
-            child: const Text('OK'),
+            child: const Text('Nanti'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _openPaymentUrl(paymentUrl);
+              _clearCartUI();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Bayar Sekarang'),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _openPaymentUrl(String paymentUrl) async {
+    try {
+      final uri = Uri.parse(paymentUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showErrorSnackBar('Tidak dapat membuka URL pembayaran');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error membuka pembayaran: ${e.toString()}');
+    }
+  }
+
   void _clearCartUI() {
     setState(() {
       _cartItems.clear();
       _tableNumberController.clear();
+      _selectedPaymentMethod = null;
+      _paymentMethods.clear();
     });
     _showSuccessSnackBar('Pesanan telah selesai dengan sukses');
   }
@@ -192,7 +265,7 @@ class _CartPageState extends State<CartPage> {
       return sum + ((product?.price ?? 0) * item.quantity);
     });
 
-    const paymentFee = 0;
+    final paymentFee = _selectedPaymentMethod?.totalFee ?? 0;
     final total = subtotal + paymentFee;
 
     return {'subtotal': subtotal, 'paymentFee': paymentFee, 'total': total};
@@ -309,18 +382,87 @@ class _CartPageState extends State<CartPage> {
                 },
               ),
             ),
-
             const SizedBox(height: 12),
 
             // Table Number
             TextField(
               controller: _tableNumberController,
-              keyboardType: TextInputType.text,
+              keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Nomor Meja',
                 border: OutlineInputBorder(),
                 hintText: 'Masukkan nomor meja',
               ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Payment Method Dropdown
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[400]!),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: _isLoadingPaymentMethods
+                  ? const Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 12),
+                        Text('Memuat metode pembayaran...'),
+                      ],
+                    )
+                  : DropdownButtonHideUnderline(
+                      child: DropdownButton<PaymentMethod>(
+                        isExpanded: true,
+                        value: _selectedPaymentMethod,
+                        hint: const Text('Pilih Metode Pembayaran'),
+                        items: _paymentMethods.map((PaymentMethod method) {
+                          return DropdownMenuItem<PaymentMethod>(
+                            value: method,
+                            child: Row(
+                              children: [
+                                // Payment method image (if available)
+                                if (method.paymentImage.isNotEmpty)
+                                  Image.network(
+                                    method.paymentImage,
+                                    width: 24,
+                                    height: 24,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.payment,
+                                        size: 24,
+                                      );
+                                    },
+                                  )
+                                else
+                                  const Icon(Icons.payment, size: 24),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(method.paymentName)),
+                                if (method.totalFee > 0)
+                                  Text(
+                                    '+Rp ${_formatCurrency(method.totalFee)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (PaymentMethod? newValue) {
+                          setState(() {
+                            _selectedPaymentMethod = newValue;
+                          });
+                        },
+                      ),
+                    ),
             ),
 
             const SizedBox(height: 20),
@@ -339,6 +481,14 @@ class _CartPageState extends State<CartPage> {
                     'Total Belanja',
                     cartSummary['subtotal'] ?? 0,
                   ),
+                  if ((cartSummary['paymentFee'] ?? 0) > 0) ...[
+                    const SizedBox(height: 8),
+                    _buildSummaryRow(
+                      'Biaya Admin',
+                      cartSummary['paymentFee'] ?? 0,
+                      color: Colors.orange,
+                    ),
+                  ],
                   const Divider(height: 24, thickness: 1),
                   _buildSummaryRow(
                     'Total Pembayaran',
@@ -383,7 +533,7 @@ class _CartPageState extends State<CartPage> {
                         ],
                       )
                     : const Text(
-                        "Melakukan pesanan",
+                        "Buat Pesanan & Bayar",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -545,7 +695,12 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildSummaryRow(String title, int value, {bool bold = false}) {
+  Widget _buildSummaryRow(
+    String title,
+    int value, {
+    bool bold = false,
+    Color? color,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -561,7 +716,7 @@ class _CartPageState extends State<CartPage> {
           style: TextStyle(
             fontWeight: bold ? FontWeight.bold : FontWeight.w600,
             fontSize: bold ? 16 : 14,
-            color: bold ? Colors.green : Colors.green[700],
+            color: color ?? (bold ? Colors.green : Colors.green[700]),
           ),
         ),
       ],

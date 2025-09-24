@@ -6,6 +6,7 @@ import 'package:selforder/models/category_model.dart';
 import 'package:selforder/models/member_model.dart';
 import 'package:selforder/models/order_model.dart';
 import 'package:selforder/models/payment_model.dart';
+import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/models/siteconfig_model.dart';
 import 'session_manager.dart';
@@ -93,6 +94,33 @@ class ApiService {
       return data.map((e) => Product.fromJson(e)).toList();
     } else {
       throw Exception('Failed to load products');
+    }
+  }
+
+  // Payment method
+  static Future<List<PaymentMethod>> fetchPaymentMethods(int amount) async {
+    final url = Uri.parse('$_baseUrl/paymentmethods');
+
+    final headers = {
+      'Content-Type': 'application/json',
+      ...SessionManager.getHeaders(),
+    };
+
+    final body = jsonEncode({'amount': amount});
+
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load payment methods');
+    }
+
+    final jsonData = jsonDecode(response.body);
+
+    if (jsonData['success'] == true && jsonData['data'] != null) {
+      final List data = jsonData['data'];
+      return data.map((e) => PaymentMethod.fromJson(e)).toList();
+    } else {
+      return [];
     }
   }
 
@@ -210,7 +238,8 @@ class ApiService {
     }
   }
 
-  static Future<Order> createOrder({
+  // UPDATED: Create Order with Duitku Payment
+  static Future<Map<String, dynamic>> createOrderWithPayment({
     required String tableNumber,
     required String paymentMethod,
     required List<Map<String, dynamic>> items,
@@ -233,10 +262,30 @@ class ApiService {
 
     if (response.statusCode == 201) {
       final jsonData = jsonDecode(response.body);
-      return Order.fromJson(jsonData['data']);
+      if (jsonData['success'] == true) {
+        return jsonData;
+      } else {
+        throw Exception(jsonData['error'] ?? 'Failed to create order');
+      }
     } else {
-      throw Exception('Failed to create order');
+      final jsonData = jsonDecode(response.body);
+      throw Exception(jsonData['error'] ?? 'Failed to create order');
     }
+  }
+
+  // DEPRECATED: Keep for backward compatibility but mark as deprecated
+  @Deprecated('Use createOrderWithPayment instead')
+  static Future<Order> createOrder({
+    required String tableNumber,
+    required String paymentMethod,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final result = await createOrderWithPayment(
+      tableNumber: tableNumber,
+      paymentMethod: paymentMethod,
+      items: items,
+    );
+    return Order.fromJson(result['order']);
   }
 
   // Payments

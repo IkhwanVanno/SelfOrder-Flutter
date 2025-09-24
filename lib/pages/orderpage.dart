@@ -4,6 +4,7 @@ import 'package:selforder/models/payment_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/models/order_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -178,6 +179,15 @@ class _OrderPageState extends State<OrderPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
+  }
+
+  Future<void> _openPaymentUrl(String paymentUrl) async {
+    final uri = Uri.parse(paymentUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      _showErrorSnackBar('Tidak dapat membuka halaman pembayaran');
+    }
   }
 
   void _showSuccessSnackBar(String message) {
@@ -487,6 +497,19 @@ class _OrderPageState extends State<OrderPage> {
                       ),
                     ),
                   ),
+                  if (order.status.label == 'Menunggu Pembayaran' &&
+                      order.payment?.paymentUrl != null &&
+                      order.payment!.paymentUrl.isNotEmpty)
+                    ElevatedButton.icon(
+                      onPressed: () =>
+                          _openPaymentUrl(order.payment!.paymentUrl),
+                      icon: const Icon(Icons.payment, size: 16),
+                      label: const Text('Bayar Sekarang'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                 ],
               ),
             ],
