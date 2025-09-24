@@ -3,12 +3,12 @@ import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/models/product_model.dart';
 
-class _CategoryItem {
+class _CategoryProduct {
   final String image;
   final String label;
   final int? categoryId;
 
-  const _CategoryItem({
+  const _CategoryProduct({
     required this.image,
     required this.label,
     this.categoryId,
@@ -23,7 +23,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<_CategoryItem> _categories = [];
+  List<_CategoryProduct> _categories = [];
   List<Product> _products = [];
   List<Product> _filteredProducts = [];
   int? _selectedCategoryId;
@@ -66,13 +66,13 @@ class _HomePageState extends State<HomePage> {
 
       setState(() {
         _categories = [
-          const _CategoryItem(
+          const _CategoryProduct(
             image: "images/cafe.png",
             label: "All",
             categoryId: null,
           ),
           ...categoriesFromApi.map(
-            (c) => _CategoryItem(
+            (c) => _CategoryProduct(
               image: c.imageURL,
               label: c.name,
               categoryId: c.id,

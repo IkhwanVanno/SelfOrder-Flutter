@@ -62,7 +62,7 @@ class ApiService {
   }
 
   // Categories
-  static Future<List<CategoryItem>> fetchCategories() async {
+  static Future<List<CategoryProduct>> fetchCategories() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/kategoriproduk'),
       headers: SessionManager.getHeaders(),
@@ -73,7 +73,7 @@ class ApiService {
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
       final List data = jsonData['data'];
-      return data.map((e) => CategoryItem.fromJson(e)).toList();
+      return data.map((e) => CategoryProduct.fromJson(e)).toList();
     } else {
       throw Exception('Failed to load categories');
     }
