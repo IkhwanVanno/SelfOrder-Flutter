@@ -190,12 +190,6 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
-  }
-
   String _formatDate(DateTime date) {
     return _dateFormat.format(date);
   }

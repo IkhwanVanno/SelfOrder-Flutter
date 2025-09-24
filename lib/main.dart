@@ -49,7 +49,6 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   SiteConfig? _siteConfig;
   bool _isLoadingSiteConfig = true;
 
-  // Auth listener function
   late Function() _authListener;
 
   @override
@@ -61,7 +60,6 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
   @override
   void dispose() {
-    // Remove the auth listener when disposing
     AuthService.removeAuthStateListener(_authListener);
     super.dispose();
   }
@@ -91,10 +89,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }
 
   void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login').then((_) {
-      // No need to manually call setState here anymore
-      // The auth listener will handle it automatically
-    });
+    Navigator.pushNamed(context, '/login').then((_) {});
   }
 
   final List<Widget> _pages = [
@@ -154,7 +149,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: true, // Pastikan judul selalu di tengah
+        centerTitle: true,
         backgroundColor: Colors.blue,
         actions: [
           if (AuthService.isLoggedIn && AuthService.currentUser != null) ...[

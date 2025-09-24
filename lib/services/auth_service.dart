@@ -202,14 +202,12 @@ class AuthService {
   }
 
   static void _notifyAllAuthStateListeners() {
-    // Create a copy of the list to avoid concurrent modification
     final listeners = List<Function()>.from(_authStateListeners);
     for (final listener in listeners) {
       try {
         listener();
       } catch (e) {
         print('Error calling auth state listener: $e');
-        // Remove problematic listener
         _authStateListeners.remove(listener);
       }
     }

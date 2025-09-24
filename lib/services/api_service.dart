@@ -127,7 +127,7 @@ class ApiService {
   // Cart Operations
   static Future<List<CartItem>> fetchCartItems() async {
     if (!SessionManager.isLoggedIn) {
-      return []; // Return empty cart for guests
+      return [];
     }
 
     final response = await http.get(

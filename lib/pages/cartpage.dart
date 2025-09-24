@@ -75,7 +75,6 @@ class _CartPageState extends State<CartPage> {
         _isLoading = false;
       });
 
-      // Load payment methods after cart items are loaded
       if (_cartItems.isNotEmpty) {
         await _loadPaymentMethods();
       }

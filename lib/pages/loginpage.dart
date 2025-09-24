@@ -42,12 +42,8 @@ class _LoginPageState extends State<LoginPage> {
 
       if (success) {
         _showSuccessSnackBar('Behasil Masuk!');
-        // Wait a moment for the snackbar to be visible
         await Future.delayed(const Duration(milliseconds: 500));
-        Navigator.pop(
-          context,
-          true,
-        ); // Return true to indicate successful login
+        Navigator.pop(context, true);
       } else {
         _showErrorSnackBar('Gagal Masuk! Periksa email dan password.');
       }

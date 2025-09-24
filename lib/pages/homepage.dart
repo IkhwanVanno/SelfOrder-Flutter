@@ -250,10 +250,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     TextButton(
                       onPressed: () =>
-                          Navigator.pushNamed(context, '/login').then((_) {
-                            // No need to manually call setState here anymore
-                            // The auth listener will handle it automatically
-                          }),
+                          Navigator.pushNamed(context, '/login').then((_) {}),
                       child: const Text(
                         'Masuk',
                         style: TextStyle(fontSize: 12),
