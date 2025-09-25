@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/models/product_model.dart';
+import 'package:selforder/theme/app_theme.dart';
 
 class _CategoryProduct {
   final String image;
@@ -202,7 +203,7 @@ class _HomePageState extends State<HomePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.green,
         duration: const Duration(seconds: 1),
       ),
     );
@@ -212,7 +213,7 @@ class _HomePageState extends State<HomePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.red,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -235,32 +236,22 @@ class _HomePageState extends State<HomePage> {
           children: [
             if (!AuthService.isLoggedIn)
               Container(
-                padding: const EdgeInsets.all(8),
-                margin: const EdgeInsets.only(top: 8),
-                color: Colors.orange[100],
+                padding: const EdgeInsets.all(16),
+                color: AppColors.secondary,
                 child: Row(
                   children: [
-                    const Icon(Icons.info, color: Colors.orange),
+                    const Icon(Icons.info, color: AppColors.yellow),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
                         'Anda belum masuk, silahkan masuk untuk order pesanan',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.pushNamed(context, '/login').then((_) {}),
-                      child: const Text(
-                        'Masuk',
-                        style: TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 12, color: AppColors.white),
                       ),
                     ),
                   ],
                 ),
               ),
             _buildCategoriesSection(),
-            const SizedBox(height: 12),
             _buildProductsSection(crossAxisCount),
           ],
         ),
@@ -269,68 +260,73 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategoriesSection() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: SizedBox(
-        height: 80,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _categories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemBuilder: (context, index) {
-            final category = _categories[index];
-            final isSelected = _selectedCategoryId == category.categoryId;
+    return Container(
+      color: AppColors.secondary.withAlpha(50),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 8),
+        child: SizedBox(
+          height: 75,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: _categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final category = _categories[index];
+              final isSelected = _selectedCategoryId == category.categoryId;
 
-            return GestureDetector(
-              onTap: () => _selectCategory(category.categoryId),
-              child: Container(
-                width: 70,
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.blue.withAlpha(25) : null,
-                  borderRadius: BorderRadius.circular(8),
-                  border: isSelected ? Border.all(color: Colors.blue) : null,
-                ),
-                padding: const EdgeInsets.all(4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    category.image.startsWith('http')
-                        ? Image.network(
-                            category.image,
-                            height: 30,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                "assets/images/cafe.png",
-                                height: 30,
-                              );
-                            },
-                          )
-                        : Image.asset(
-                            category.image,
-                            height: 30,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                "assets/images/cafe.png",
-                                height: 30,
-                              );
-                            },
-                          ),
-                    const SizedBox(height: 4),
-                    Text(
-                      category.label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isSelected ? Colors.blue : null,
-                        fontWeight: isSelected ? FontWeight.bold : null,
+              return GestureDetector(
+                onTap: () => _selectCategory(category.categoryId),
+                child: Container(
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primary.withAlpha(50) : null,
+                    borderRadius: BorderRadius.circular(8),
+                    border: isSelected
+                        ? Border.all(color: AppColors.primary)
+                        : null,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      category.image.startsWith('http')
+                          ? Image.network(
+                              category.image,
+                              height: 30,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  "assets/images/cafe.png",
+                                  height: 30,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              category.image,
+                              height: 30,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  "assets/images/cafe.png",
+                                  height: 30,
+                                );
+                              },
+                            ),
+                      const SizedBox(height: 4),
+                      Text(
+                        category.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isSelected ? AppColors.black : null,
+                          fontWeight: isSelected ? FontWeight.bold : null,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -373,13 +369,13 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.inventory_2_outlined, size: 80, color: AppColors.black),
           const SizedBox(height: 16),
           Text(
             _selectedCategoryId == null
                 ? 'Produk tidak ada'
                 : 'Produk tidak ada dalam kategori ini',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16, color: AppColors.black),
           ),
           const SizedBox(height: 8),
           TextButton(onPressed: _loadDataFromApi, child: const Text('Refresh')),
@@ -423,7 +419,7 @@ class ProductCard extends StatelessWidget {
                         return Container(
                           height: 150,
                           width: double.infinity,
-                          color: Colors.grey[300],
+                          color: AppColors.grey,
                           child: const Icon(Icons.broken_image, size: 50),
                         );
                       },
@@ -438,7 +434,7 @@ class ProductCard extends StatelessWidget {
                               return Container(
                                 height: 150,
                                 width: double.infinity,
-                                color: Colors.grey[300],
+                                color: AppColors.grey,
                                 child: const Icon(Icons.broken_image, size: 50),
                               );
                             },
@@ -446,7 +442,7 @@ class ProductCard extends StatelessWidget {
                         : Container(
                             height: 150,
                             width: double.infinity,
-                            color: Colors.grey[300],
+                            color: AppColors.grey,
                             child: const Icon(Icons.image, size: 50),
                           )),
               Positioned(
@@ -458,15 +454,13 @@ class ProductCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: product.available
-                        ? Colors.green[700]
-                        : Colors.red[600],
+                    color: product.available ? AppColors.green : AppColors.red,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     product.available ? "Tersedia" : "Habis",
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -483,13 +477,13 @@ class ProductCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue[700],
+                      color: AppColors.blue,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       cartQuantity.toString(),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -517,7 +511,7 @@ class ProductCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Rp ${_formatCurrency(product.price)}',
-                  style: const TextStyle(color: Colors.black87, fontSize: 13),
+                  style: const TextStyle(color: AppColors.black, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -538,14 +532,14 @@ class ProductCard extends StatelessWidget {
       return Container(
         height: 38,
         decoration: BoxDecoration(
-          color: Colors.grey[300],
+          color: AppColors.grey,
           borderRadius: BorderRadius.circular(24),
         ),
         child: const Center(
           child: Text(
             'Tidak tersedia',
             style: TextStyle(
-              color: Colors.grey,
+              color: AppColors.grey,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -560,14 +554,14 @@ class ProductCard extends StatelessWidget {
         child: Container(
           height: 38,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.amber, width: 1.5),
+            border: Border.all(color: AppColors.primary, width: 1.5),
             borderRadius: BorderRadius.circular(24),
           ),
           child: const Center(
             child: Text(
               'Tambahkan ke keranjang',
               style: TextStyle(
-                color: Colors.amber,
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -580,7 +574,7 @@ class ProductCard extends StatelessWidget {
     return Container(
       height: 38,
       decoration: BoxDecoration(
-        color: Colors.amber,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -591,14 +585,14 @@ class ProductCard extends StatelessWidget {
             onPressed: () => onUpdateQuantity(cartQuantity - 1),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            color: Colors.white,
+            color: AppColors.white,
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               cartQuantity.toString(),
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -608,7 +602,7 @@ class ProductCard extends StatelessWidget {
             onPressed: () => onUpdateQuantity(cartQuantity + 1),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            color: Colors.white,
+            color: AppColors.white,
           ),
         ],
       ),

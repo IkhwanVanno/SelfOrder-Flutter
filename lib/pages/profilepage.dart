@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/models/member_model.dart';
+import 'package:selforder/theme/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -137,8 +138,11 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Keluar', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+            child: const Text(
+              'Keluar',
+              style: TextStyle(color: AppColors.white),
+            ),
           ),
         ],
       ),
@@ -162,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showErrorSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
+        SnackBar(content: Text(message), backgroundColor: AppColors.red),
       );
     }
   }
@@ -170,7 +174,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showSuccessSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.green),
+        SnackBar(content: Text(message), backgroundColor: AppColors.green),
       );
     }
   }
@@ -203,7 +207,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           CircleAvatar(
                             radius: 50,
-                            backgroundColor: Colors.blue.withAlpha(25),
+                            backgroundColor: AppColors.primary.withAlpha(25),
                             child: Text(
                               _currentUser != null
                                   ? '${_currentUser!.firstName.isNotEmpty ? _currentUser!.firstName[0] : 'U'}${_currentUser!.surname.isNotEmpty ? _currentUser!.surname[0] : ''}'
@@ -211,7 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -320,8 +324,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : submitForm,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.white,
                         ),
                         child: _isLoading
                             ? const Row(
@@ -333,7 +337,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                                        AppColors.white,
                                       ),
                                     ),
                                   ),
@@ -359,8 +363,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: OutlinedButton(
                         onPressed: _isLoading ? null : _logout,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
+                          foregroundColor: AppColors.red,
+                          side: const BorderSide(color: AppColors.red),
                         ),
                         child: const Text(
                           'Keluar',
@@ -389,25 +393,20 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.person_off, size: 80, color: Colors.grey[400]),
+              Icon(Icons.person_off, size: 80, color: AppColors.grey),
               const SizedBox(height: 16),
               Text(
                 'Silahkan masuk untuk melihat profil anda',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 16, color: AppColors.grey),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _navigateToLogin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
                 ),
                 child: const Text('Masuk'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/register'),
-                child: const Text('Buat Akun'),
               ),
             ],
           ),

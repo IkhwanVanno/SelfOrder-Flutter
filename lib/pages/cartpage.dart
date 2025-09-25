@@ -4,6 +4,7 @@ import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
+import 'package:selforder/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CartPage extends StatefulWidget {
@@ -225,8 +226,8 @@ class _CartPageState extends State<CartPage> {
               _clearCartUI();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
             ),
             child: const Text('Bayar Sekarang'),
           ),
@@ -272,7 +273,7 @@ class _CartPageState extends State<CartPage> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: AppColors.red),
     );
   }
 
@@ -305,18 +306,18 @@ class _CartPageState extends State<CartPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.login, size: 80, color: Colors.grey[400]),
+              Icon(Icons.login, size: 80, color: AppColors.grey),
               const SizedBox(height: 16),
               Text(
                 'Silahkan masuk untuk melihat keranjang anda',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 16, color: AppColors.grey),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _navigateToLogin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
                 ),
                 child: const Text('Masuk'),
               ),
@@ -336,20 +337,16 @@ class _CartPageState extends State<CartPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.shopping_cart_outlined,
-            size: 100,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.shopping_cart_outlined, size: 100, color: AppColors.grey),
           const SizedBox(height: 16),
           Text(
             'Keranjang anda kosong',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 18, color: AppColors.grey),
           ),
           const SizedBox(height: 8),
           Text(
             'Tambahkan Item untuk memulai',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14, color: AppColors.grey),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
@@ -401,7 +398,7 @@ class _CartPageState extends State<CartPage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[400]!),
+                border: Border.all(color: AppColors.grey),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: _isLoadingPaymentMethods
@@ -448,7 +445,7 @@ class _CartPageState extends State<CartPage> {
                                     '+Rp ${_formatCurrency(method.totalFee)}',
                                     style: const TextStyle(
                                       fontSize: 12,
-                                      color: Colors.orange,
+                                      color: AppColors.orange,
                                     ),
                                   ),
                               ],
@@ -470,9 +467,9 @@ class _CartPageState extends State<CartPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: AppColors.grey.withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: AppColors.grey),
               ),
               child: Column(
                 children: [
@@ -485,7 +482,7 @@ class _CartPageState extends State<CartPage> {
                     _buildSummaryRow(
                       'Biaya Admin',
                       cartSummary['paymentFee'] ?? 0,
-                      color: Colors.orange,
+                      color: AppColors.orange,
                     ),
                   ],
                   const Divider(height: 24, thickness: 1),
@@ -507,8 +504,8 @@ class _CartPageState extends State<CartPage> {
               child: ElevatedButton(
                 onPressed: _isProcessingOrder ? null : _processOrder,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -523,7 +520,7 @@ class _CartPageState extends State<CartPage> {
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                                AppColors.white,
                               ),
                             ),
                           ),
@@ -570,7 +567,7 @@ class _CartPageState extends State<CartPage> {
                               return Container(
                                 width: 70,
                                 height: 70,
-                                color: Colors.grey[300],
+                                color: AppColors.grey,
                                 child: const Icon(Icons.image_not_supported),
                               );
                             },
@@ -584,7 +581,7 @@ class _CartPageState extends State<CartPage> {
                               return Container(
                                 width: 70,
                                 height: 70,
-                                color: Colors.grey[300],
+                                color: AppColors.grey,
                                 child: const Icon(Icons.image_not_supported),
                               );
                             },
@@ -592,7 +589,7 @@ class _CartPageState extends State<CartPage> {
                   : Container(
                       width: 70,
                       height: 70,
-                      color: Colors.grey[300],
+                      color: AppColors.grey,
                       child: const Icon(Icons.image_not_supported),
                     ),
             ),
@@ -616,7 +613,7 @@ class _CartPageState extends State<CartPage> {
                     'Rp ${_formatCurrency(product?.price ?? 0)}',
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.green,
+                      color: AppColors.black,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -636,7 +633,7 @@ class _CartPageState extends State<CartPage> {
                 // Quantity Controls
                 Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(color: AppColors.grey),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -675,13 +672,13 @@ class _CartPageState extends State<CartPage> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
+                      color: AppColors.red.withAlpha(25),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red[200]!),
+                      border: Border.all(color: AppColors.red),
                     ),
                     child: const Icon(
                       Icons.delete,
-                      color: Colors.red,
+                      color: AppColors.red,
                       size: 16,
                     ),
                   ),
@@ -715,7 +712,7 @@ class _CartPageState extends State<CartPage> {
           style: TextStyle(
             fontWeight: bold ? FontWeight.bold : FontWeight.w600,
             fontSize: bold ? 16 : 14,
-            color: color ?? (bold ? Colors.green : Colors.green[700]),
+            color: color ?? (bold ? Colors.green : AppColors.black),
           ),
         ),
       ],

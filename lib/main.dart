@@ -8,6 +8,7 @@ import 'package:selforder/pages/registerpage.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/models/siteconfig_model.dart';
+import 'package:selforder/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,10 +25,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Self Order',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: const MainNavigationWrapper(),
       routes: {
         '/login': (context) => const LoginPage(),
@@ -148,12 +146,12 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         title: Text(
           _siteConfig?.title ?? 'Self Order',
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         actions: [
           if (AuthService.isLoggedIn && AuthService.currentUser != null) ...[
             Padding(
@@ -162,7 +160,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                 child: Text(
                   'Hi, ${AuthService.currentUser!.firstName}',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.white,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -174,7 +172,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               child: const Text(
                 'Masuk',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -199,7 +197,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: AppColors.white,
+        unselectedItemColor: AppColors.secondary,
+        backgroundColor: AppColors.primary,
         onTap: _onItemTapped,
       ),
     );

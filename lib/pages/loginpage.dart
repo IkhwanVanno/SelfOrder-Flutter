@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:selforder/models/siteconfig_model.dart';
+import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
+import 'package:selforder/theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,12 +18,35 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  SiteConfig? _siteConfig;
+  bool _isLoadingSiteConfig = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSiteConfig();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSiteConfig() async {
+    try {
+      final siteConfig = await ApiService.fetchSiteConfig();
+      setState(() {
+        _siteConfig = siteConfig;
+        _isLoadingSiteConfig = false;
+      });
+    } catch (e) {
+      print('Gagal memuat SiteConfig: $e');
+      setState(() {
+        _isLoadingSiteConfig = false;
+      });
+    }
   }
 
   Future<void> _submitForm() async {
@@ -63,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.red,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -73,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.green,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -83,9 +109,9 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Masuk', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Masuk', style: TextStyle(color: AppColors.white)),
+        backgroundColor: AppColors.primary,
+        iconTheme: const IconThemeData(color: AppColors.white),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -99,7 +125,44 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Logo
-                    Image.asset("assets/images/cafe.png", height: 100),
+                    if (_siteConfig != null && _siteConfig!.imageURL.isNotEmpty)
+                      _siteConfig!.imageURL.startsWith('http')
+                          ? Image.network(
+                              _siteConfig!.imageURL,
+                              height: 100,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  "assets/images/cafe.png",
+                                  height: 100,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              _siteConfig!.imageURL,
+                              height: 100,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  "assets/images/cafe.png",
+                                  height: 100,
+                                );
+                              },
+                            )
+                    else if (!_isLoadingSiteConfig)
+                      Image.asset("assets/images/cafe.png", height: 100)
+                    else
+                      const SizedBox(height: 100),
+
+                    const SizedBox(height: 12),
+
+                    // Title
+                    Text(
+                      _siteConfig?.title ?? 'Self Order',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 32),
 
                     // Email Field
@@ -167,8 +230,8 @@ class _LoginPageState extends State<LoginPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _submitForm,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -183,7 +246,7 @@ class _LoginPageState extends State<LoginPage> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                                        AppColors.white,
                                       ),
                                     ),
                                   ),
@@ -208,13 +271,13 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _navigateToRegister,
                       child: RichText(
                         text: const TextSpan(
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(color: AppColors.grey),
                           children: [
                             TextSpan(text: 'Belum punya akun? '),
                             TextSpan(
                               text: 'Daftar',
                               style: TextStyle(
-                                color: Colors.blue,
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

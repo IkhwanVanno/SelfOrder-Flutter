@@ -8,6 +8,7 @@ import 'package:selforder/models/payment_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/models/order_model.dart';
+import 'package:selforder/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderPage extends StatefulWidget {
@@ -163,7 +164,7 @@ class _OrderPageState extends State<OrderPage> {
               '$label:',
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                color: AppColors.grey,
               ),
             ),
           ),
@@ -181,7 +182,7 @@ class _OrderPageState extends State<OrderPage> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: AppColors.red),
     );
   }
 
@@ -285,15 +286,15 @@ class _OrderPageState extends State<OrderPage> {
                                 });
                               }
                             },
-                            selectedColor: Colors.blue.withAlpha(51),
-                            checkmarkColor: Colors.blue,
-                            backgroundColor: Colors.grey[100],
+                            selectedColor: AppColors.blue.withAlpha(51),
+                            checkmarkColor: AppColors.blue,
+                            backgroundColor: AppColors.grey,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
                                 color: isSelected
-                                    ? Colors.blue
-                                    : Colors.grey[300]!,
+                                    ? AppColors.blue
+                                    : AppColors.grey,
                               ),
                             ),
                           ),
@@ -323,18 +324,18 @@ class _OrderPageState extends State<OrderPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.login, size: 80, color: Colors.grey[400]),
+            Icon(Icons.login, size: 80, color: AppColors.grey),
             const SizedBox(height: 16),
             Text(
               'Silahkan masuk untuk melihat pesanan anda',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16, color: AppColors.grey),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _navigateToLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
               ),
               child: const Text('Masuk'),
             ),
@@ -349,18 +350,18 @@ class _OrderPageState extends State<OrderPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.receipt_long_outlined, size: 80, color: AppColors.grey),
           const SizedBox(height: 16),
           Text(
             _selectedFilter == 'All'
                 ? 'Pesanan tidak ditemukan'
                 : 'Tidak ada $_selectedFilter pesanan',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16, color: AppColors.grey),
           ),
           const SizedBox(height: 8),
           Text(
             'Pesanan Anda akan ditampilkan di sini',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14, color: AppColors.grey),
           ),
           const SizedBox(height: 16),
           TextButton(onPressed: _refreshOrders, child: const Text('Refresh')),
@@ -440,7 +441,7 @@ class _OrderPageState extends State<OrderPage> {
                             const Icon(
                               Icons.receipt,
                               size: 16,
-                              color: Colors.grey,
+                              color: AppColors.grey,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -458,7 +459,7 @@ class _OrderPageState extends State<OrderPage> {
                             const Icon(
                               Icons.table_restaurant,
                               size: 16,
-                              color: Colors.grey,
+                              color: AppColors.grey,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -474,7 +475,7 @@ class _OrderPageState extends State<OrderPage> {
                               const Icon(
                                 Icons.payment,
                                 size: 16,
-                                color: Colors.grey,
+                                color: AppColors.grey,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -495,7 +496,7 @@ class _OrderPageState extends State<OrderPage> {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Colors.green,
+                          color: AppColors.green,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -504,13 +505,13 @@ class _OrderPageState extends State<OrderPage> {
                           const Icon(
                             Icons.schedule,
                             size: 14,
-                            color: Colors.grey,
+                            color: AppColors.grey,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _formatDate(order.created),
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: AppColors.grey,
                               fontSize: 12,
                             ),
                           ),
@@ -523,12 +524,10 @@ class _OrderPageState extends State<OrderPage> {
 
               const SizedBox(height: 12),
 
-              // Action Button
-              // Action Buttons (rapih dalam dua baris jika perlu)
-              // Tombol aksi rapi dan sama lebar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Tombol Detail (selalu muncul di semua kondisi)
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => _showOrderDetails(order),
@@ -540,10 +539,14 @@ class _OrderPageState extends State<OrderPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (order.status.label == 'Menunggu Pembayaran' &&
+
+                  // Tambahan kondisi: jika status == "Dibatalkan", tidak tampilkan tombol lain
+                  if (order.status.label == 'Dibatalkan')
+                    const SizedBox()
+                  else if (order.status.label == 'Menunggu Pembayaran' &&
                       order.payment?.paymentUrl != null &&
-                      order.payment!.paymentUrl.isNotEmpty)
+                      order.payment!.paymentUrl.isNotEmpty) ...[
+                    const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () =>
@@ -551,43 +554,43 @@ class _OrderPageState extends State<OrderPage> {
                         icon: const Icon(Icons.payment, size: 16),
                         label: const Text('Bayar'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.green,
+                          foregroundColor: AppColors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           textStyle: const TextStyle(fontSize: 13),
                         ),
                       ),
                     ),
-                  if (!(order.status.label == 'Menunggu Pembayaran' &&
-                      order.payment?.paymentUrl != null &&
-                      order.payment!.paymentUrl.isNotEmpty))
+                  ] else ...[
+                    const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _sendInvoiceEmail(order),
                         icon: const Icon(Icons.email, size: 16),
                         label: const Text('Email'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.orange,
+                          foregroundColor: AppColors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           textStyle: const TextStyle(fontSize: 13),
                         ),
                       ),
                     ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _downloadInvoicePdf(order),
-                      icon: const Icon(Icons.download, size: 16),
-                      label: const Text('PDF'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        textStyle: const TextStyle(fontSize: 13),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _downloadInvoicePdf(order),
+                        icon: const Icon(Icons.download, size: 16),
+                        label: const Text('PDF'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.blue,
+                          foregroundColor: AppColors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          textStyle: const TextStyle(fontSize: 13),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ],

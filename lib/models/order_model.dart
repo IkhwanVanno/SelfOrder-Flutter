@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selforder/models/member_model.dart';
 import 'package:selforder/models/payment_model.dart';
+import 'package:selforder/theme/app_theme.dart';
 
 enum OrderStatus { menungguPembayaran, dibatalkan, antrean, proses, terkirim }
 
@@ -40,15 +41,15 @@ extension OrderStatusExtension on OrderStatus {
   Color get color {
     switch (this) {
       case OrderStatus.menungguPembayaran:
-        return Colors.orange;
+        return AppColors.orange;
       case OrderStatus.dibatalkan:
-        return Colors.red;
+        return AppColors.red;
       case OrderStatus.antrean:
-        return Colors.grey;
+        return AppColors.grey;
       case OrderStatus.proses:
-        return Colors.blue;
+        return AppColors.blue;
       case OrderStatus.terkirim:
-        return Colors.green;
+        return AppColors.green;
     }
   }
 }
