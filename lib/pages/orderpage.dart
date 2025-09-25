@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:selforder/models/payment_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
@@ -181,12 +185,56 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
   Future<void> _openPaymentUrl(String paymentUrl) async {
     final uri = Uri.parse(paymentUrl);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       _showErrorSnackBar('Tidak dapat membuka halaman pembayaran');
+    }
+  }
+
+  Future<void> _sendInvoiceEmail(Order order) async {
+    try {
+      final success = await ApiService.sendInvoiceEmail(order.id.toString());
+      if (success) {
+        _showSuccessSnackBar('Invoice berhasil dikirim ke Email');
+      } else {
+        _showErrorSnackBar('Gagal mengirim invoice ke email');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Terjadi kesalahan: ${e.toString()}');
+    }
+  }
+
+  Future<void> _downloadInvoicePdf(Order order) async {
+    try {
+      final pdfBytes = await ApiService.getInvoicePdfBytes(order.id.toString());
+
+      // Simpan ke file sementara
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/Invoice-${order.nomorInvoice}.pdf';
+      final file = File(filePath);
+      await file.writeAsBytes(pdfBytes);
+
+      // Buka file PDF
+      final result = await OpenFile.open(filePath);
+
+      if (result.type != ResultType.done) {
+        _showErrorSnackBar('Gagal membuka file PDF');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Terjadi kesalahan: ${e.toString()}');
     }
   }
 
@@ -476,34 +524,70 @@ class _OrderPageState extends State<OrderPage> {
               const SizedBox(height: 12),
 
               // Action Button
+              // Action Buttons (rapih dalam dua baris jika perlu)
+              // Tombol aksi rapi dan sama lebar
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton.icon(
-                    onPressed: () => _showOrderDetails(order),
-                    icon: const Icon(Icons.info_outline, size: 16),
-                    label: const Text('Lihat lebih detail'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showOrderDetails(order),
+                      icon: const Icon(Icons.info_outline, size: 16),
+                      label: const Text('Detail'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        textStyle: const TextStyle(fontSize: 13),
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   if (order.status.label == 'Menunggu Pembayaran' &&
                       order.payment?.paymentUrl != null &&
                       order.payment!.paymentUrl.isNotEmpty)
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          _openPaymentUrl(order.payment!.paymentUrl),
-                      icon: const Icon(Icons.payment, size: 16),
-                      label: const Text('Bayar Sekarang'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () =>
+                            _openPaymentUrl(order.payment!.paymentUrl),
+                        icon: const Icon(Icons.payment, size: 16),
+                        label: const Text('Bayar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          textStyle: const TextStyle(fontSize: 13),
+                        ),
                       ),
                     ),
+                  if (!(order.status.label == 'Menunggu Pembayaran' &&
+                      order.payment?.paymentUrl != null &&
+                      order.payment!.paymentUrl.isNotEmpty))
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _sendInvoiceEmail(order),
+                        icon: const Icon(Icons.email, size: 16),
+                        label: const Text('Email'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          textStyle: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _downloadInvoicePdf(order),
+                      icon: const Icon(Icons.download, size: 16),
+                      label: const Text('PDF'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        textStyle: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],

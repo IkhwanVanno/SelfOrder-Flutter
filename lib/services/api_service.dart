@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:selforder/config/app_config.dart';
 import 'package:selforder/models/cartitem_model.dart';
@@ -340,6 +341,31 @@ class ApiService {
       return Payment.fromJson(jsonData['data']);
     } else {
       throw Exception('Failed to create payment');
+    }
+  }
+
+  static Future<bool> sendInvoiceEmail(String orderId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/sendInvoiceAPI/$orderId'),
+    );
+    return response.statusCode == 200;
+  }
+
+  static Future<Uint8List> getInvoicePdfBytes(String orderId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/downloadInvoiceAPI/$orderId'),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final pdfBase64 = data['pdf_base64'];
+
+      if (pdfBase64 != null) {
+        return base64Decode(pdfBase64);
+      } else {
+        throw Exception('PDF tidak tersedia');
+      }
+    } else {
+      throw Exception('Gagal mengambil PDF dari server');
     }
   }
 }
