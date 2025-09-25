@@ -99,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Logo
-                    Image.asset("images/cafe.png", height: 100),
+                    Image.asset("assets/images/cafe.png", height: 100),
                     const SizedBox(height: 32),
 
                     // Email Field

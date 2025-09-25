@@ -119,7 +119,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) {
                           return Image.asset(
-                            "images/cafe.png",
+                            "assets/images/cafe.png",
                             fit: BoxFit.contain,
                           );
                         },
@@ -129,7 +129,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) {
                           return Image.asset(
-                            "images/cafe.png",
+                            "assets/images/cafe.png",
                             fit: BoxFit.contain,
                           );
                         },
@@ -138,7 +138,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             : !_isLoadingSiteConfig
             ? Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: Image.asset("images/cafe.png", fit: BoxFit.contain),
+                child: Image.asset(
+                  "assets/images/cafe.png",
+                  fit: BoxFit.contain,
+                ),
               )
             : null,
         // Judul akan otomatis center

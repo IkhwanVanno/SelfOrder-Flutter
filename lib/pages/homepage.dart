@@ -67,7 +67,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _categories = [
           const _CategoryProduct(
-            image: "images/cafe.png",
+            image: "assets/images/cafe.png",
             label: "All",
             categoryId: null,
           ),
@@ -300,14 +300,20 @@ class _HomePageState extends State<HomePage> {
                             category.image,
                             height: 30,
                             errorBuilder: (context, error, stackTrace) {
-                              return Image.asset("images/cafe.png", height: 30);
+                              return Image.asset(
+                                "assets/images/cafe.png",
+                                height: 30,
+                              );
                             },
                           )
                         : Image.asset(
                             category.image,
                             height: 30,
                             errorBuilder: (context, error, stackTrace) {
-                              return Image.asset("images/cafe.png", height: 30);
+                              return Image.asset(
+                                "assets/images/cafe.png",
+                                height: 30,
+                              );
                             },
                           ),
                     const SizedBox(height: 4),

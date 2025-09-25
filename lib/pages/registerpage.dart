@@ -85,7 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Image.asset("images/cafe.png", height: 100),
+                    Image.asset("assets/images/cafe.png", height: 100),
                     const SizedBox(height: 32),
 
                     // Firstname & Lastname
