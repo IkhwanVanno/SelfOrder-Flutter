@@ -30,6 +30,11 @@ class _OrderPageState extends State<OrderPage> {
   ];
 
   final DateFormat _dateFormat = DateFormat('dd-MM-yyyy HH:mm');
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   List<Order> _allOrders = [];
   bool _isLoading = true;
@@ -112,11 +117,49 @@ class _OrderPageState extends State<OrderPage> {
               _buildDetailRow('Invoice', order.nomorInvoice),
               _buildDetailRow('Table Number', order.nomorMeja),
               _buildDetailRow('Status', order.status.label),
-              _buildDetailRow('Total Amount', 'Rp ${order.totalHarga}'),
-
-              _buildDetailRow('Item Total', 'Rp ${order.totalHargaBarang}'),
-              _buildDetailRow('Payment Fee', 'Rp ${order.paymentFee}'),
+              _buildDetailRow(
+                'Total Amount',
+                _currencyFormat.format(order.totalHarga),
+              ),
+              _buildDetailRow(
+                'Item Total',
+                _currencyFormat.format(order.totalHargaBarang),
+              ),
+              _buildDetailRow(
+                'Payment Fee',
+                _currencyFormat.format(order.paymentFee),
+              ),
               _buildDetailRow('Date', _formatDate(order.created)),
+
+              if (order.orderItems.isNotEmpty) ...[
+                const Divider(height: 20),
+                const Text(
+                  'Daftar Pesanan:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Column(
+                  children: order.orderItems.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.displayText,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+
               if (order.member != null) ...[
                 const Divider(height: 20),
                 const Text(
@@ -492,7 +535,7 @@ class _OrderPageState extends State<OrderPage> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'Rp ${order.totalHarga}',
+                        _currencyFormat.format(order.totalHarga),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

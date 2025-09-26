@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selforder/models/member_model.dart';
 import 'package:selforder/models/payment_model.dart';
+import 'package:selforder/models/orderitem_model.dart';
 import 'package:selforder/theme/app_theme.dart';
 
 enum OrderStatus { menungguPembayaran, dibatalkan, antrean, proses, terkirim }
@@ -65,6 +66,7 @@ class Order {
   final DateTime created;
   final Member? member;
   final Payment? payment;
+  final List<OrderItem> orderItems;
 
   Order({
     required this.id,
@@ -77,9 +79,20 @@ class Order {
     required this.created,
     this.member,
     this.payment,
+    this.orderItems = const [],
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    List<OrderItem> items = [];
+    if (json['OrderItems'] != null && json['OrderItems'] is List) {
+      try {
+        final List itemsJson = json['OrderItems'];
+        items = itemsJson.map((item) => OrderItem.fromJson(item)).toList();
+      } catch (e) {
+        items = [];
+      }
+    }
+
     return Order(
       id: json['ID'],
       totalHarga: (json['TotalHarga'] ?? 0).toDouble(),
@@ -95,6 +108,11 @@ class Order {
       payment: json['Payment'] != null
           ? Payment.fromJson(json['Payment'])
           : null,
+      orderItems: items,
     );
+  }
+  String get itemsList {
+    if (orderItems.isEmpty) return '-';
+    return orderItems.map((item) => item.displayText).join(', ');
   }
 }
