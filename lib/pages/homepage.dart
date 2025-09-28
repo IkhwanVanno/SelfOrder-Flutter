@@ -369,13 +369,13 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: AppColors.black),
+          Icon(Icons.inventory_2_outlined, size: 80, color: AppColors.grey),
           const SizedBox(height: 16),
           Text(
             _selectedCategoryId == null
                 ? 'Produk tidak ada'
                 : 'Produk tidak ada dalam kategori ini',
-            style: TextStyle(fontSize: 16, color: AppColors.black),
+            style: TextStyle(fontSize: 16, color: AppColors.grey),
           ),
           const SizedBox(height: 8),
           TextButton(onPressed: _loadDataFromApi, child: const Text('Refresh')),
