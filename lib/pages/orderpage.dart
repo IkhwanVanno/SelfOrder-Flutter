@@ -75,15 +75,26 @@ class _OrderPageState extends State<OrderPage> {
         });
         return;
       }
-
       final orders = await ApiService.fetchOrders();
+      final currentUser = AuthService.currentUser;
+      final filteredOrders = currentUser != null
+          ? orders
+                .where(
+                  (order) =>
+                      order.member?.id == currentUser.id ||
+                      order.member == null,
+                )
+                .toList()
+          : orders;
+
       setState(() {
-        _allOrders = orders;
+        _allOrders = filteredOrders;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       _showErrorSnackBar('Gagal memuat pesanan: ${e.toString()}');
+      print('Error loading orders: $e');
     }
   }
 
@@ -105,6 +116,12 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _showOrderDetails(Order order) {
+    final currentUser = AuthService.currentUser;
+    if (currentUser != null && order.member?.id != currentUser.id) {
+      _showErrorSnackBar('Tidak dapat menampilkan detail pesanan ini');
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -249,6 +266,12 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _sendInvoiceEmail(Order order) async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser != null && order.member?.id != currentUser.id) {
+      _showErrorSnackBar('Tidak dapat mengirim invoice untuk pesanan ini');
+      return;
+    }
+
     try {
       final success = await ApiService.sendInvoiceEmail(order.id.toString());
       if (success) {
@@ -262,6 +285,12 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _downloadInvoicePdf(Order order) async {
+    final currentUser = AuthService.currentUser;
+    if (currentUser != null && order.member?.id != currentUser.id) {
+      _showErrorSnackBar('Tidak dapat mengunduh invoice untuk pesanan ini');
+      return;
+    }
+
     try {
       final pdfBytes = await ApiService.getInvoicePdfBytes(order.id.toString());
 
