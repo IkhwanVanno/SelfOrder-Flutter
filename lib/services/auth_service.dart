@@ -217,4 +217,52 @@ class AuthService {
   static void clearAuthStateListeners() {
     _authStateListeners.clear();
   }
+
+  // Forgot Password
+  static Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final url = Uri.parse('${AppConfig.baseUrl}/forgotpassword');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': data['success'] ?? true,
+          'message':
+              data['message'] ??
+              'Link atur ulang kata sandi telah dikirim ke email Anda.',
+        };
+      } else {
+        // Handle error responses
+        try {
+          final data = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message':
+                data['message'] ??
+                'Gagal mengirim email reset password. Silakan coba lagi.',
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'message':
+                'Gagal mengirim email reset password. Silakan coba lagi.',
+          };
+        }
+      }
+    } catch (e) {
+      print('Forgot password error: $e');
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan koneksi. Silakan coba lagi.',
+      };
+    }
+  }
 }

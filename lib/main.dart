@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selforder/pages/forgotpasswordpage.dart';
 import 'package:selforder/pages/homepage.dart';
 import 'package:selforder/pages/cartpage.dart';
 import 'package:selforder/pages/orderpage.dart';
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
+        '/forgotpassword':(context) => const ForgotPasswordPage(),
       },
     );
   }

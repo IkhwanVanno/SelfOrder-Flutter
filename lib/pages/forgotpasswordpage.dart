@@ -4,20 +4,18 @@ import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/theme/app_theme.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _obscurePassword = true;
   SiteConfig? _siteConfig;
   bool _isLoadingSiteConfig = true;
 
@@ -30,7 +28,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -57,36 +54,69 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final email = _emailController.text.trim();
-    final password = _passwordController.text;
 
     try {
-      final success = await AuthService.login(email, password);
+      final result = await AuthService.forgotPassword(email);
 
       setState(() {
         _isLoading = false;
       });
 
-      if (success) {
-        _showSuccessSnackBar('Behasil Masuk!');
-        await Future.delayed(const Duration(milliseconds: 500));
-        Navigator.pop(context, true);
+      if (result['success']) {
+        _showSuccessSnackBar(result['message']);
+        _showSuccessDialog();
       } else {
-        _showErrorSnackBar('Gagal Masuk! Periksa email dan password.');
+        _showErrorSnackBar(result['message']);
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      _showErrorSnackBar('Error: ${e.toString()}');
+      _showErrorSnackBar('Terjadi kesalahan. Silakan coba lagi.');
     }
   }
 
-  void _navigateToRegister() {
-    Navigator.pushNamed(context, '/register');
-  }
-
-  void _navigateToForgotpassword(){
-    Navigator.pushNamed(context, '/forgotpassword');
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.mark_email_read,
+            color: AppColors.green,
+            size: 48,
+          ),
+          title: const Text(
+            'Email Terkirim!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Link untuk mengatur ulang kata sandi telah dikirim ke ${_emailController.text.trim()}.\n\nSilakan periksa email Anda dan ikuti petunjuk yang diberikan.',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(); // Back to previous page
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Kembali'),
+            ),
+          ],
+          actionsAlignment: MainAxisAlignment.center,
+        );
+      },
+    );
   }
 
   void _showErrorSnackBar(String message) {
@@ -113,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Masuk', style: TextStyle(color: AppColors.white)),
+        title: const Text('Lupa Kata Sandi', style: TextStyle(color: AppColors.white)),
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
@@ -169,66 +199,42 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 32),
 
+                    // Description
+                    const Text(
+                      'Masukkan alamat email Anda untuk menerima link pengaturan ulang kata sandi',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
                     // Email Field
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submitForm(),
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.email_outlined),
+                        helperText: 'Masukkan email yang terdaftar di akun Anda',
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Email tidak boleh kosong';
                         }
-                        if (!RegExp(
-                          r'^[^@]+@[^@]+\.[^@]+',
-                        ).hasMatch(value.trim())) {
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
                           return 'Format email tidak valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Password Field
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submitForm(),
-                      decoration: InputDecoration(
-                        labelText: 'Kata Sandi',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock_outlined),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Kata sandi tidak boleh kosong';
-                        }
-                        if (value.length < 6) {
-                          return 'Kata sandi minimal 6 karakter';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 24),
 
-                    // Login Button
+                    // Submit Button
                     SizedBox(
                       height: 50,
                       child: ElevatedButton(
@@ -255,11 +261,11 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ),
                                   SizedBox(width: 12),
-                                  Text('Masuk...'),
+                                  Text('Mengirim...'),
                                 ],
                               )
                             : const Text(
-                                'Masuk Sekarang',
+                                'Kirim Link Reset',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -267,49 +273,18 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
-                    // Register Link
-                    Column(
-                      children: [
-                        TextButton(
-                          onPressed: _isLoading ? null : _navigateToRegister,
-                          child: RichText(
-                            text: const TextSpan(
-                              style: TextStyle(color: AppColors.grey),
-                              children: [
-                                TextSpan(text: 'Belum punya akun? '),
-                                TextSpan(
-                                  text: 'Daftar',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                    // Back to Login Link
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'Kembali ke Halaman Masuk',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
                         ),
-                        TextButton(
-                          onPressed: _isLoading ? null : _navigateToForgotpassword,
-                          child: RichText(
-                            text: const TextSpan(
-                              style: TextStyle(color: AppColors.grey),
-                              children: [
-                                TextSpan(text: 'Lupa kata sandi? '),
-                                TextSpan(
-                                  text: 'Kirim OTP',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),

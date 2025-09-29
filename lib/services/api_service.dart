@@ -315,6 +315,7 @@ class ApiService {
     }
   }
 
+  // Create payment
   static Future<Payment> createPayment({
     required int orderId,
     required String paymentMethod,
@@ -344,6 +345,7 @@ class ApiService {
     }
   }
 
+  // Send Invoice to Email
   static Future<bool> sendInvoiceEmail(String orderId) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/sendInvoiceAPI/$orderId'),
@@ -351,6 +353,7 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  // Get Invoice PDF
   static Future<Uint8List> getInvoicePdfBytes(String orderId) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/downloadInvoiceAPI/$orderId'),
