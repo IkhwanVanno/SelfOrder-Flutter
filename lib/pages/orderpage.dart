@@ -360,7 +360,7 @@ class _OrderPageState extends State<OrderPage> {
                             },
                             selectedColor: AppColors.blue.withAlpha(51),
                             checkmarkColor: AppColors.blue,
-                            backgroundColor: AppColors.grey,
+                            backgroundColor: AppColors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
