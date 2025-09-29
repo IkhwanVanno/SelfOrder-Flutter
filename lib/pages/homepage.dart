@@ -261,7 +261,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildCategoriesSection() {
     return Container(
-      color: AppColors.secondary.withAlpha(50),
+      color: AppColors.accent.withAlpha(50),
       child: Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 8),
         child: SizedBox(
