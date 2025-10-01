@@ -155,7 +155,7 @@ class _CartPageState extends State<CartPage> {
     setState(() => _isProcessingOrder = true);
 
     try {
-      final orderItems = _cartItems.map((cartItem) {
+      _cartItems.map((cartItem) {
         final product = _productCache[cartItem.productId];
         return {
           'ProductID': cartItem.productId,
@@ -167,15 +167,10 @@ class _CartPageState extends State<CartPage> {
       final result = await ApiService.createOrderWithPayment(
         tableNumber: _tableNumberController.text.trim(),
         paymentMethod: _selectedPaymentMethod!.paymentMethod,
-        items: orderItems,
       );
 
-      // Clear cart after successful order creation
       await ApiService.clearCart();
-
       setState(() => _isProcessingOrder = false);
-
-      // Show success and redirect to payment
       _showPaymentDialog(result);
     } catch (e) {
       setState(() => _isProcessingOrder = false);
@@ -184,8 +179,8 @@ class _CartPageState extends State<CartPage> {
   }
 
   void _showPaymentDialog(Map<String, dynamic> orderResult) {
-    final order = orderResult['order'];
-    final paymentUrl = order['payment_url'];
+    final orderData = orderResult['data'];
+    final paymentUrl = orderData['payment_url'];
 
     showDialog(
       context: context,
@@ -198,12 +193,13 @@ class _CartPageState extends State<CartPage> {
           children: [
             const Text('Pesanan Anda telah berhasil dibuat.'),
             const SizedBox(height: 16),
-            Text('Invoice: ${order['NomorInvoice']}'),
+            Text('Invoice: ${orderData['nomor_invoice']}'),
             Text(
-              'Total: Rp ${_formatCurrency(order['TotalHarga']?.toInt() ?? 0)}',
+              'Total: Rp ${_formatCurrency((orderData['total_harga'] ?? 0).toInt())}',
             ),
-            Text('Meja: ${order['NomorMeja']}'),
-            Text('Pembayaran: ${_selectedPaymentMethod?.paymentName}'),
+            Text('Meja: ${orderData['nomor_meja']}'),
+            if (orderData['payment'] != null)
+              Text('Pembayaran: ${orderData['payment']['metode_pembayaran']}'),
             const SizedBox(height: 16),
             const Text(
               'Anda akan diarahkan ke halaman pembayaran Duitku.',

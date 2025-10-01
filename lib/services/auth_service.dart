@@ -7,26 +7,21 @@ import 'session_manager.dart';
 class AuthService {
   static Member? _currentUser;
 
-  // Changed to List to support multiple listeners
   static List<Function()> _authStateListeners = [];
-
   static Member? get currentUser => _currentUser;
   static bool get isLoggedIn =>
       SessionManager.isLoggedIn && _currentUser != null;
 
-  // Add listener method
   static void addAuthStateListener(Function() listener) {
     if (!_authStateListeners.contains(listener)) {
       _authStateListeners.add(listener);
     }
   }
 
-  // Remove listener method
   static void removeAuthStateListener(Function() listener) {
     _authStateListeners.remove(listener);
   }
 
-  // Legacy support for single callback (backward compatibility)
   static set onAuthStateChanged(Function()? callback) {
     if (callback != null) {
       addAuthStateListener(callback);
@@ -41,7 +36,6 @@ class AuthService {
       if (userData != null) {
         try {
           _currentUser = Member.fromJson(userData);
-          // Verify session is still valid
           await fetchCurrentMember();
           _notifyAllAuthStateListeners();
         } catch (e) {
@@ -117,7 +111,7 @@ class AuthService {
     if (!SessionManager.isLoggedIn) return null;
 
     try {
-      final url = Uri.parse('${AppConfig.baseUrl}/currentMemberr');
+      final url = Uri.parse('${AppConfig.baseUrl}/member');
       final response = await http.get(
         url,
         headers: SessionManager.getHeaders(),
@@ -125,10 +119,11 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _currentUser = Member.fromJson(data['user']);
+        _currentUser = Member.fromJson(
+          data['data'],
+        );
 
-        // Update stored user data
-        await SessionManager.updateUserData(data['user']);
+        await SessionManager.updateUserData(data['data']);
         _notifyAllAuthStateListeners();
         return _currentUser;
       } else if (response.statusCode == 401) {
@@ -153,18 +148,26 @@ class AuthService {
     if (_currentUser == null) return false;
 
     try {
-      final url = Uri.parse('${AppConfig.baseUrl}/member/${_currentUser!.id}');
+      final url = Uri.parse('${AppConfig.baseUrl}/member');
       final body = <String, dynamic>{
-        'FirstName': firstName,
-        'Surname': lastName,
-        'Email': email,
+        'first_name': firstName,
+        'surname': lastName,
+        'email': email,
       };
 
+      http.Response response;
       if (password != null && password.isNotEmpty) {
-        body['Password'] = password;
+        final passwordResponse = await http.put(
+          Uri.parse('${AppConfig.baseUrl}/member/password'),
+          headers: SessionManager.getHeaders(),
+          body: jsonEncode({'new_password': password}),
+        );
+        if (passwordResponse.statusCode != 200) {
+          return false;
+        }
       }
 
-      final response = await http.put(
+      response = await http.put(
         url,
         headers: SessionManager.getHeaders(),
         body: jsonEncode(body),

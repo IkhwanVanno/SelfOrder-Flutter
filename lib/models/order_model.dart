@@ -84,9 +84,9 @@ class Order {
 
   factory Order.fromJson(Map<String, dynamic> json) {
     List<OrderItem> items = [];
-    if (json['OrderItems'] != null && json['OrderItems'] is List) {
+    if (json['items'] != null && json['items'] is List) {
       try {
-        final List itemsJson = json['OrderItems'];
+        final List itemsJson = json['items'];
         items = itemsJson.map((item) => OrderItem.fromJson(item)).toList();
       } catch (e) {
         items = [];
@@ -94,25 +94,22 @@ class Order {
     }
 
     return Order(
-      id: json['ID'],
-      totalHarga: (json['TotalHarga'] ?? 0).toDouble(),
-      totalHargaBarang: (json['TotalHargaBarang'] ?? 0).toDouble(),
-      paymentFee: (json['PaymentFee'] ?? 0).toDouble(),
+      id: json['id'],
+      totalHarga: (json['total_harga'] ?? 0).toDouble(),
+      totalHargaBarang: (json['total_harga_barang'] ?? 0)
+          .toDouble(),
+      paymentFee: (json['payment_fee'] ?? 0).toDouble(),
       status: OrderStatusExtension.fromString(
-        (json['Status'] ?? '').toString(),
+        (json['status'] ?? '').toString(),
       ),
-      nomorInvoice: (json['NomorInvoice'] ?? '').toString(),
-      nomorMeja: (json['NomorMeja'] ?? '').toString(),
-      created: DateTime.tryParse(json['Created'] ?? '') ?? DateTime.now(),
-      member: json['Member'] != null ? Member.fromJson(json['Member']) : null,
-      payment: json['Payment'] != null
-          ? Payment.fromJson(json['Payment'])
+      nomorInvoice: (json['nomor_invoice'] ?? '').toString(),
+      nomorMeja: (json['nomor_meja'] ?? '').toString(),
+      created: DateTime.tryParse(json['created'] ?? '') ?? DateTime.now(),
+      member: null,
+      payment: json['payment'] != null
+          ? Payment.fromJson(json['payment'])
           : null,
       orderItems: items,
     );
-  }
-  String get itemsList {
-    if (orderItems.isEmpty) return '-';
-    return orderItems.map((item) => item.displayText).join(', ');
   }
 }

@@ -1,4 +1,3 @@
-// models/payment_model.dart
 enum PaymentStatus { pending, completed, expired, failed, unknown }
 
 extension PaymentStatusExtension on PaymentStatus {
@@ -39,11 +38,8 @@ class Payment {
   final double totalHarga;
   final PaymentStatus status;
   final String metodePembayaran;
-  final String duitkuTransactionId;
   final String paymentUrl;
-  final DateTime expiryTime;
-  final DateTime created;
-  final DateTime updated;
+  final DateTime? expiryTime;
 
   Payment({
     required this.id,
@@ -51,25 +47,21 @@ class Payment {
     required this.totalHarga,
     required this.status,
     required this.metodePembayaran,
-    required this.duitkuTransactionId,
     required this.paymentUrl,
-    required this.expiryTime,
-    required this.created,
-    required this.updated,
+    this.expiryTime,
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
     return Payment(
-      id: json['ID'],
-      reference: (json['Reference'] ?? '').toString(),
-      totalHarga: (json['TotalHarga'] ?? 0).toDouble(),
-      status: PaymentStatusExtension.fromString(json['Status'] ?? ''),
-      metodePembayaran: (json['MetodePembayaran'] ?? '').toString(),
-      duitkuTransactionId: (json['DuitkuTransactionID'] ?? '').toString(),
-      paymentUrl: (json['PaymentUrl'] ?? '').toString(),
-      expiryTime: DateTime.tryParse(json['ExpiryTime'] ?? '') ?? DateTime.now(),
-      created: DateTime.tryParse(json['Created'] ?? '') ?? DateTime.now(),
-      updated: DateTime.tryParse(json['Updated'] ?? '') ?? DateTime.now(),
+      id: json['id'] ?? 0,
+      reference: (json['reference'] ?? '').toString(),
+      totalHarga: (json['total_harga'] ?? 0).toDouble(),
+      status: PaymentStatusExtension.fromString(json['status'] ?? ''),
+      metodePembayaran: (json['metode_pembayaran'] ?? '').toString(),
+      paymentUrl: (json['paymenturl'] ?? json['payment_url'] ?? '').toString(),
+      expiryTime: json['expiry_time'] != null
+          ? DateTime.tryParse(json['expiry_time'])
+          : null,
     );
   }
 }

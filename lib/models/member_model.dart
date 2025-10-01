@@ -35,19 +35,13 @@ class Member {
 
   factory Member.fromJson(Map<String, dynamic> json) {
     return Member(
-      id: json['ID'],
-      firstName: json['FirstName'] ?? '',
-      surname: json['Surname'] ?? '',
-      email: json['Email'] ?? '',
-      tempIDHash: json['TempIDHash'],
-      tempIDExpired: json['TempIDExpired'] != null
-          ? DateTime.tryParse(json['TempIDExpired'])
-          : null,
-      groups:
-          (json['Groups'] as List<dynamic>?)
-              ?.map((g) => Group.fromJson(g))
-              .toList() ??
-          [],
+      id: json['id'],
+      firstName: json['first_name'] ?? '',
+      surname: json['surname'] ?? '',
+      email: json['email'] ?? '',
+      tempIDHash: null,
+      tempIDExpired: null,
+      groups: [],
     );
   }
 

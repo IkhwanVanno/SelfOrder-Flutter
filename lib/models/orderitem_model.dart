@@ -17,11 +17,20 @@ class OrderItem {
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
-      id: json['ID'] ?? 0,
-      kuantitas: json['Kuantitas'] ?? 0,
-      hargaSatuan: (json['HargaSatuan'] ?? 0).toDouble(),
-      orderData: json['Order'],
-      produk: json['Produk'] != null ? Product.fromJson(json['Produk']) : null,
+      id: json['id'] ?? 0,
+      kuantitas: json['kuantitas'] ?? 0,
+      hargaSatuan: (json['harga_satuan'] ?? 0).toDouble(),
+      orderData: null,
+      produk: json['produk_nama'] != null
+          ? Product(
+              id: json['produk_id'] ?? 0,
+              name: json['produk_nama'] ?? '',
+              description: '',
+              price: (json['harga_satuan'] ?? 0).toInt(),
+              available: true,
+              imageURL: '',
+            )
+          : null,
     );
   }
 

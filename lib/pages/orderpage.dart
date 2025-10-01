@@ -76,19 +76,9 @@ class _OrderPageState extends State<OrderPage> {
         return;
       }
       final orders = await ApiService.fetchOrders();
-      final currentUser = AuthService.currentUser;
-      final filteredOrders = currentUser != null
-          ? orders
-                .where(
-                  (order) =>
-                      order.member?.id == currentUser.id ||
-                      order.member == null,
-                )
-                .toList()
-          : orders;
 
       setState(() {
-        _allOrders = filteredOrders;
+        _allOrders = orders;
         _isLoading = false;
       });
     } catch (e) {
@@ -116,12 +106,6 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   void _showOrderDetails(Order order) {
-    final currentUser = AuthService.currentUser;
-    if (currentUser != null && order.member?.id != currentUser.id) {
-      _showErrorSnackBar('Tidak dapat menampilkan detail pesanan ini');
-      return;
-    }
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -175,17 +159,6 @@ class _OrderPageState extends State<OrderPage> {
                     );
                   }).toList(),
                 ),
-              ],
-
-              if (order.member != null) ...[
-                const Divider(height: 20),
-                const Text(
-                  'Customer Information:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text('Name: ${order.member!.fullName}'),
-                Text('Email: ${order.member!.email}'),
               ],
               if (order.payment != null) ...[
                 const Divider(height: 20),
@@ -266,12 +239,6 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _sendInvoiceEmail(Order order) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser != null && order.member?.id != currentUser.id) {
-      _showErrorSnackBar('Tidak dapat mengirim invoice untuk pesanan ini');
-      return;
-    }
-
     try {
       final success = await ApiService.sendInvoiceEmail(order.id.toString());
       if (success) {
@@ -285,12 +252,6 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future<void> _downloadInvoicePdf(Order order) async {
-    final currentUser = AuthService.currentUser;
-    if (currentUser != null && order.member?.id != currentUser.id) {
-      _showErrorSnackBar('Tidak dapat mengunduh invoice untuk pesanan ini');
-      return;
-    }
-
     try {
       final pdfBytes = await ApiService.getInvoicePdfBytes(order.id.toString());
 

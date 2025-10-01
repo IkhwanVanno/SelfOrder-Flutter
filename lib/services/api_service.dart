@@ -4,9 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:selforder/config/app_config.dart';
 import 'package:selforder/models/cartitem_model.dart';
 import 'package:selforder/models/category_model.dart';
-import 'package:selforder/models/member_model.dart';
 import 'package:selforder/models/order_model.dart';
-import 'package:selforder/models/payment_model.dart';
 import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/models/siteconfig_model.dart';
@@ -40,32 +38,10 @@ class ApiService {
     }
   }
 
-  // Member
-  static Future<Member> fetchCurrentMember() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/currentMemberr'),
-        headers: SessionManager.getHeaders(),
-      );
-
-      _handleResponse(response);
-
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        final userData = jsonData['user'];
-        return Member.fromJson(userData);
-      } else {
-        throw Exception('Failed to load user (${response.statusCode})');
-      }
-    } catch (e) {
-      throw Exception('Failed to connect to server: $e');
-    }
-  }
-
   // Categories
   static Future<List<CategoryProduct>> fetchCategories() async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/kategoriproduk'),
+      Uri.parse('$_baseUrl/categories'),
       headers: SessionManager.getHeaders(),
     );
 
@@ -83,7 +59,7 @@ class ApiService {
   // Products
   static Future<List<Product>> fetchProducts() async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/produk'),
+      Uri.parse('$_baseUrl/products'),
       headers: SessionManager.getHeaders(),
     );
 
@@ -132,7 +108,7 @@ class ApiService {
     }
 
     final response = await http.get(
-      Uri.parse('$_baseUrl/cartitem'),
+      Uri.parse('$_baseUrl/cart'),
       headers: SessionManager.getHeaders(),
     );
 
@@ -147,44 +123,41 @@ class ApiService {
     }
   }
 
-  static Future<CartItem> addToCart(int productId, int quantity) async {
+  static Future<void> addToCart(int productId, int quantity) async {
     if (!SessionManager.isLoggedIn) {
       throw Exception('Please login to add items to cart');
     }
 
     final response = await http.post(
-      Uri.parse('$_baseUrl/cartitem'),
+      Uri.parse('$_baseUrl/cart'),
       headers: SessionManager.getHeaders(),
-      body: jsonEncode({'ProdukID': productId, 'Kuantitas': quantity}),
+      body: jsonEncode({
+        'produk_id': productId,
+        'kuantitas': quantity,
+      }), // Key berubah
     );
 
     _handleResponse(response);
 
-    if (response.statusCode == 201) {
-      final jsonData = jsonDecode(response.body);
-      return CartItem.fromJson(jsonData['data']);
-    } else {
+    if (response.statusCode != 201) {
       throw Exception('Failed to add item to cart');
     }
   }
 
-  static Future<CartItem> updateCartItem(int cartItemId, int quantity) async {
+  static Future<void> updateCartItem(int cartItemId, int quantity) async {
     if (!SessionManager.isLoggedIn) {
       throw Exception('Please login to update cart');
     }
 
     final response = await http.put(
-      Uri.parse('$_baseUrl/cartitem/$cartItemId'),
+      Uri.parse('$_baseUrl/cart/$cartItemId'),
       headers: SessionManager.getHeaders(),
-      body: jsonEncode({'Kuantitas': quantity}),
+      body: jsonEncode({'kuantitas': quantity}),
     );
 
     _handleResponse(response);
 
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
-      return CartItem.fromJson(jsonData['data']);
-    } else {
+    if (response.statusCode != 200) {
       throw Exception('Failed to update cart item');
     }
   }
@@ -195,7 +168,7 @@ class ApiService {
     }
 
     final response = await http.delete(
-      Uri.parse('$_baseUrl/cartitem/$cartItemId'),
+      Uri.parse('$_baseUrl/cart/$cartItemId'),
       headers: SessionManager.getHeaders(),
     );
 
@@ -224,7 +197,7 @@ class ApiService {
     }
 
     final response = await http.get(
-      Uri.parse('$_baseUrl/order'),
+      Uri.parse('$_baseUrl/orders'),
       headers: SessionManager.getHeaders(),
     );
 
@@ -243,19 +216,17 @@ class ApiService {
   static Future<Map<String, dynamic>> createOrderWithPayment({
     required String tableNumber,
     required String paymentMethod,
-    required List<Map<String, dynamic>> items,
   }) async {
     if (!SessionManager.isLoggedIn) {
       throw Exception('Please login to create order');
     }
 
     final response = await http.post(
-      Uri.parse('$_baseUrl/order'),
+      Uri.parse('$_baseUrl/orders'),
       headers: SessionManager.getHeaders(),
       body: jsonEncode({
-        'NomorMeja': tableNumber,
-        'MetodePembayaran': paymentMethod,
-        'Items': items,
+        'nomor_meja': tableNumber,
+        'payment_method': paymentMethod,
       }),
     );
 
@@ -274,81 +245,11 @@ class ApiService {
     }
   }
 
-  // DEPRECATED: Keep for backward compatibility but mark as deprecated
-  @Deprecated('Use createOrderWithPayment instead')
-  static Future<Order> createOrder({
-    required String tableNumber,
-    required String paymentMethod,
-    required List<Map<String, dynamic>> items,
-  }) async {
-    final result = await createOrderWithPayment(
-      tableNumber: tableNumber,
-      paymentMethod: paymentMethod,
-      items: items,
-    );
-    return Order.fromJson(result['order']);
-  }
-
-  // Payments
-  static Future<List<Payment>> fetchPayments() async {
-    if (!SessionManager.isLoggedIn) {
-      return [];
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/payment'),
-        headers: SessionManager.getHeaders(),
-      );
-
-      _handleResponse(response);
-
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        final List data = jsonData['data'];
-        return data.map((e) => Payment.fromJson(e)).toList();
-      } else {
-        throw Exception('Failed to load payments (${response.statusCode})');
-      }
-    } catch (e) {
-      throw Exception('Failed to connect to server: $e');
-    }
-  }
-
-  // Create payment
-  static Future<Payment> createPayment({
-    required int orderId,
-    required String paymentMethod,
-    required double amount,
-  }) async {
-    if (!SessionManager.isLoggedIn) {
-      throw Exception('Please login to create payment');
-    }
-
-    final response = await http.post(
-      Uri.parse('$_baseUrl/payment'),
-      headers: SessionManager.getHeaders(),
-      body: jsonEncode({
-        'OrderID': orderId,
-        'MetodePembayaran': paymentMethod,
-        'TotalHarga': amount,
-      }),
-    );
-
-    _handleResponse(response);
-
-    if (response.statusCode == 201) {
-      final jsonData = jsonDecode(response.body);
-      return Payment.fromJson(jsonData['data']);
-    } else {
-      throw Exception('Failed to create payment');
-    }
-  }
-
   // Send Invoice to Email
   static Future<bool> sendInvoiceEmail(String orderId) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/sendInvoiceAPI/$orderId'),
+      Uri.parse('$_baseUrl/orders/$orderId/send-email'),
+      headers: SessionManager.getHeaders(),
     );
     return response.statusCode == 200;
   }
@@ -356,7 +257,8 @@ class ApiService {
   // Get Invoice PDF
   static Future<Uint8List> getInvoicePdfBytes(String orderId) async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/downloadInvoiceAPI/$orderId'),
+      Uri.parse('$_baseUrl/orders/$orderId/pdf'),
+      headers: SessionManager.getHeaders(),
     );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
