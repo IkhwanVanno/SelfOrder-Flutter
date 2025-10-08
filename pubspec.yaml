@@ -11,14 +11,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.2
-  http: ^1.1.0
-  shared_preferences: ^2.2.2
-  url_launcher: ^6.2.5
-  intl: ^0.20.2
-  path_provider: ^2.0.15
-  open_file: ^3.2.1
-
+  get: ^4.7.2 # State management/route
+  cupertino_icons: ^1.0.2 # Icons IOS
+  intl: ^0.20.2 # Format tanggal/mata uang
+  http: ^1.1.0 # Call API
+  url_launcher: ^6.2.5 # Open URL
+  open_file: ^3.5.10 # Open File PDF
+  permission_handler: ^11.3.1 # Izin akses Android/Ios
+  shared_preferences: ^2.5.3 # Simpan data lokal
+  path_provider: ^2.1.5 # Akses Directory Device
+  
 dev_dependencies:
   flutter_launcher_icons: "^0.14.4"
   flutter_test:
@@ -28,7 +30,7 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/cafe.png"
-  min_sdk_android: 21
+  min_sdk_android: 28
   web:
     generate: true
     image_path: "assets/images/cafe.png"

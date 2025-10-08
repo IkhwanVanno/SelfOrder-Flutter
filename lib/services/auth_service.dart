@@ -93,10 +93,10 @@ class AuthService {
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'FirstName': firstName,
-          'Surname': lastName,
-          'Email': email,
-          'Password': password,
+          'first_name': firstName,
+          'surname': lastName,
+          'email': email,
+          'password': password,
         }),
       );
 
@@ -119,9 +119,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _currentUser = Member.fromJson(
-          data['data'],
-        );
+        _currentUser = Member.fromJson(data['data']);
 
         await SessionManager.updateUserData(data['data']);
         _notifyAllAuthStateListeners();

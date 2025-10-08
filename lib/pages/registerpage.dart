@@ -1,103 +1,29 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:selforder/config/app_config.dart';
-import 'package:selforder/models/siteconfig_model.dart';
-import 'package:selforder/services/api_service.dart';
+import 'package:get/get.dart';
+import 'package:selforder/controllers/auth_controller.dart';
+import 'package:selforder/controllers/siteconfig_controller.dart';
+import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends StatelessWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
-}
-
-class _RegisterPageState extends State<RegisterPage> {
-  final formKey = GlobalKey<FormState>();
-  final TextEditingController firstnameController = TextEditingController();
-  final TextEditingController lastnameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  SiteConfig? _siteConfig;
-  bool _isLoadingSiteConfig = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSiteConfig();
-  }
-
-  @override
-  void dispose() {
-    firstnameController.dispose();
-    lastnameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadSiteConfig() async {
-    try {
-      final siteConfig = await ApiService.fetchSiteConfig();
-      setState(() {
-        _siteConfig = siteConfig;
-        _isLoadingSiteConfig = false;
-      });
-    } catch (e) {
-      print('Gagal memuat SiteConfig: $e');
-      setState(() {
-        _isLoadingSiteConfig = false;
-      });
-    }
-  }
-
-  Future<void> submitForm() async {
-    if (!formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    final url = Uri.parse('${AppConfig.baseUrl}/register');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'FirstName': firstnameController.text.trim(),
-        'Surname': lastnameController.text.trim(),
-        'Email': emailController.text.trim(),
-        'Password': passwordController.text,
-      }),
-    );
-
-    setState(() => _isLoading = false);
-
-    if (response.statusCode == 201) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pendaftaran berhasil'),
-          backgroundColor: AppColors.green,
-        ),
-      );
-      Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pendaftaran gagal'),
-          backgroundColor: AppColors.red,
-        ),
-      );
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final siteConfigController = Get.find<SiteConfigController>();
+
+    final formKey = GlobalKey<FormState>();
+    final firstnameController = TextEditingController();
+    final lastnameController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final obscurePassword = true.obs;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daftar', style: TextStyle(color: AppColors.white)),
         backgroundColor: AppColors.primary,
-        automaticallyImplyLeading: true,
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
       body: Center(
@@ -112,44 +38,49 @@ class _RegisterPageState extends State<RegisterPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Logo
-                    if (_siteConfig != null && _siteConfig!.imageURL.isNotEmpty)
-                      _siteConfig!.imageURL.startsWith('http')
-                          ? Image.network(
-                              _siteConfig!.imageURL,
-                              height: 100,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Image.asset(
-                                  "assets/images/cafe.png",
-                                  height: 100,
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              _siteConfig!.imageURL,
-                              height: 100,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Image.asset(
-                                  "assets/images/cafe.png",
-                                  height: 100,
-                                );
-                              },
-                            )
-                    else if (!_isLoadingSiteConfig)
-                      Image.asset("assets/images/cafe.png", height: 100)
-                    else
-                      const SizedBox(height: 100),
+                    Obx(() {
+                      final siteConfig = siteConfigController.siteConfig;
+                      if (siteConfig != null &&
+                          siteConfig.imageURL.isNotEmpty) {
+                        return siteConfig.imageURL.startsWith('http')
+                            ? Image.network(
+                                siteConfig.imageURL,
+                                height: 100,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
+                                    "assets/images/cafe.png",
+                                    height: 100,
+                                  );
+                                },
+                              )
+                            : Image.asset(
+                                siteConfig.imageURL,
+                                height: 100,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
+                                    "assets/images/cafe.png",
+                                    height: 100,
+                                  );
+                                },
+                              );
+                      }
+                      return Image.asset("assets/images/cafe.png", height: 100);
+                    }),
 
                     const SizedBox(height: 12),
 
                     // Title
-                    Text(
-                      _siteConfig?.title ?? 'Self Order',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Obx(() {
+                      final siteConfig = siteConfigController.siteConfig;
+                      return Text(
+                        siteConfig?.title ?? 'Self Order',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }),
                     const SizedBox(height: 32),
 
                     // Firstname & Lastname
@@ -214,75 +145,87 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16),
 
                     // Password
-                    TextFormField(
-                      controller: passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Sandi',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock_outlined),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                    Obx(
+                      () => TextFormField(
+                        controller: passwordController,
+                        obscureText: obscurePassword.value,
+                        decoration: InputDecoration(
+                          labelText: 'Sandi',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outlined),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword.value
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () {
+                              obscurePassword.value = !obscurePassword.value;
+                            },
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
                         ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Sandi tidak boleh kosong';
+                          }
+                          if (value.length < 6) {
+                            return 'Sandi minimal 6 karakter';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Sandi tidak boleh kosong';
-                        }
-                        if (value.length < 6) {
-                          return 'Sandi minimal 6 karakter';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 24),
 
                     // Submit Button
-                    SizedBox(
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    Obx(
+                      () => SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: authController.isLoading
+                              ? null
+                              : () => _submitForm(
+                                  formKey,
+                                  firstnameController,
+                                  lastnameController,
+                                  emailController,
+                                  passwordController,
+                                  authController,
+                                ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ),
-                        child: _isLoading
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.white,
+                          child: authController.isLoading
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              AppColors.white,
+                                            ),
                                       ),
                                     ),
+                                    SizedBox(width: 12),
+                                    Text('Mendaftar...'),
+                                  ],
+                                )
+                              : const Text(
+                                  'Daftar Sekarang',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  SizedBox(width: 12),
-                                  Text('Mendaftar...'),
-                                ],
-                              )
-                            : const Text(
-                                'Daftar Sekarang',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
                                 ),
-                              ),
+                        ),
                       ),
                     ),
                   ],
@@ -293,5 +236,42 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitForm(
+    GlobalKey<FormState> formKey,
+    TextEditingController firstnameController,
+    TextEditingController lastnameController,
+    TextEditingController emailController,
+    TextEditingController passwordController,
+    AuthController authController,
+  ) async {
+    if (!formKey.currentState!.validate()) return;
+
+    final success = await authController.register(
+      firstnameController.text.trim(),
+      lastnameController.text.trim(),
+      emailController.text.trim(),
+      passwordController.text,
+    );
+
+    if (success) {
+      Get.snackbar(
+        'Berhasil',
+        'Pendaftaran berhasil',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.green,
+        colorText: AppColors.white,
+      );
+      Get.offNamed(AppRoutes.LOGIN);
+    } else {
+      Get.snackbar(
+        'Error',
+        'Pendaftaran gagal',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+    }
   }
 }

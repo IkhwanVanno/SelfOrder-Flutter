@@ -1,334 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:selforder/controllers/auth_controller.dart';
+import 'package:selforder/controllers/cart_controller.dart';
+import 'package:selforder/controllers/product_controller.dart';
 import 'package:selforder/models/cartitem_model.dart';
-import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/models/product_model.dart';
-import 'package:selforder/services/api_service.dart';
-import 'package:selforder/services/auth_service.dart';
+import 'package:selforder/models/paymentmethod_model.dart';
+import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class CartPage extends StatefulWidget {
+class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
   @override
-  State<CartPage> createState() => _CartPageState();
-}
+  Widget build(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final cartController = Get.find<CartController>();
 
-class _CartPageState extends State<CartPage> {
-  final TextEditingController _tableNumberController = TextEditingController();
+    return Scaffold(
+      body: Obx(() {
+        if (!authController.isLoggedIn) {
+          return _buildNotLoggedInView();
+        }
 
-  bool _isProcessingOrder = false;
-  bool _isLoading = true;
-  bool _isLoadingPaymentMethods = false;
-  List<CartItem> _cartItems = [];
-  Map<int, Product> _productCache = {};
-  List<PaymentMethod> _paymentMethods = [];
-  PaymentMethod? _selectedPaymentMethod;
+        if (cartController.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-  late Function() _authListener;
+        if (cartController.cartItems.isEmpty) {
+          return _buildEmptyCart(cartController);
+        }
 
-  @override
-  void initState() {
-    super.initState();
-    _setupAuthListener();
-    _loadCartItems();
+        return _buildCartContent(cartController);
+      }),
+    );
   }
 
-  @override
-  void dispose() {
-    _tableNumberController.dispose();
-    AuthService.removeAuthStateListener(_authListener);
-    super.dispose();
-  }
-
-  void _setupAuthListener() {
-    _authListener = () {
-      if (mounted) {
-        setState(() {});
-        _loadCartItems();
-      }
-    };
-    AuthService.addAuthStateListener(_authListener);
-  }
-
-  Future<void> _loadCartItems() async {
-    setState(() => _isLoading = true);
-
-    try {
-      if (!AuthService.isLoggedIn) {
-        setState(() {
-          _cartItems = [];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final cartItems = await ApiService.fetchCartItems();
-      final products = await ApiService.fetchProducts();
-
-      _productCache.clear();
-      for (final product in products) {
-        _productCache[product.id] = product;
-      }
-
-      setState(() {
-        _cartItems = cartItems;
-        _isLoading = false;
-      });
-
-      if (_cartItems.isNotEmpty) {
-        await _loadPaymentMethods();
-      }
-    } catch (e) {
-      _showErrorSnackBar('Gagal memuat keranjang: ${e.toString()}');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadPaymentMethods() async {
-    final cartSummary = _getCartSummary();
-    final totalAmount = cartSummary['total'] ?? 0;
-
-    if (totalAmount <= 0) return;
-
-    setState(() => _isLoadingPaymentMethods = true);
-
-    try {
-      final paymentMethods = await ApiService.fetchPaymentMethods(totalAmount);
-      setState(() {
-        _paymentMethods = paymentMethods;
-        _selectedPaymentMethod = null;
-        _isLoadingPaymentMethods = false;
-      });
-    } catch (e) {
-      _showErrorSnackBar('Gagal memuat metode pembayaran: ${e.toString()}');
-      setState(() => _isLoadingPaymentMethods = false);
-    }
-  }
-
-  void _updateQuantity(int cartItemId, int newQuantity) async {
-    if (newQuantity <= 0) {
-      await _removeItem(cartItemId);
-      return;
-    }
-
-    try {
-      await ApiService.updateCartItem(cartItemId, newQuantity);
-      await _loadCartItems();
-      _showSuccessSnackBar('Cart diperbarui');
-    } catch (e) {
-      _showErrorSnackBar('Gagal memperbarui keranjang: ${e.toString()}');
-    }
-  }
-
-  Future<void> _removeItem(int cartItemId) async {
-    try {
-      await ApiService.removeFromCart(cartItemId);
-      await _loadCartItems();
-      _showSuccessSnackBar('Item telah dihapus dari keranjang');
-    } catch (e) {
-      _showErrorSnackBar('Gagal menghapus: ${e.toString()}');
-    }
-  }
-
-  Future<void> _processOrder() async {
-    if (!AuthService.isLoggedIn) {
-      _showErrorSnackBar('Silahkan Masuk terlebih dahulu');
-      return;
-    }
-
-    if (_tableNumberController.text.trim().isEmpty) {
-      _showErrorSnackBar('Silahkan masukkan nomor meja');
-      return;
-    }
-
-    if (_selectedPaymentMethod == null) {
-      _showErrorSnackBar('Silahkan pilih metode pembayaran');
-      return;
-    }
-
-    if (_cartItems.isEmpty) {
-      _showErrorSnackBar('Keranjang kosong');
-      return;
-    }
-
-    setState(() => _isProcessingOrder = true);
-
-    try {
-      _cartItems.map((cartItem) {
-        final product = _productCache[cartItem.productId];
-        return {
-          'ProductID': cartItem.productId,
-          'Kuantitas': cartItem.quantity,
-          'HargaSatuan': product?.price ?? 0,
-        };
-      }).toList();
-
-      final result = await ApiService.createOrderWithPayment(
-        tableNumber: _tableNumberController.text.trim(),
-        paymentMethod: _selectedPaymentMethod!.paymentMethod,
-      );
-
-      await ApiService.clearCart();
-      setState(() => _isProcessingOrder = false);
-      _showPaymentDialog(result);
-    } catch (e) {
-      setState(() => _isProcessingOrder = false);
-      _showErrorSnackBar('Gagal membuat pesanan: ${e.toString()}');
-    }
-  }
-
-  void _showPaymentDialog(Map<String, dynamic> orderResult) {
-    final orderData = orderResult['data'];
-    final paymentUrl = orderData['payment_url'];
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Pesanan Berhasil Dibuat!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Pesanan Anda telah berhasil dibuat.'),
-            const SizedBox(height: 16),
-            Text('Invoice: ${orderData['nomor_invoice']}'),
-            Text(
-              'Total: Rp ${_formatCurrency((orderData['total_harga'] ?? 0).toInt())}',
-            ),
-            Text('Meja: ${orderData['nomor_meja']}'),
-            if (orderData['payment'] != null)
-              Text('Pembayaran: ${orderData['payment']['metode_pembayaran']}'),
-            const SizedBox(height: 16),
-            const Text(
-              'Anda akan diarahkan ke halaman pembayaran Duitku.',
-              style: TextStyle(fontStyle: FontStyle.italic),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _clearCartUI();
-            },
-            child: const Text('Nanti'),
+  Widget _buildNotLoggedInView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.login, size: 80, color: AppColors.grey),
+          const SizedBox(height: 16),
+          Text(
+            'Silahkan masuk untuk melihat keranjang anda',
+            style: TextStyle(fontSize: 16, color: AppColors.grey),
           ),
+          const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _openPaymentUrl(paymentUrl);
-              _clearCartUI();
-            },
+            onPressed: () => Get.toNamed(AppRoutes.LOGIN),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.white,
             ),
-            child: const Text('Bayar Sekarang'),
+            child: const Text('Masuk'),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _openPaymentUrl(String paymentUrl) async {
-    try {
-      final uri = Uri.parse(paymentUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        _showErrorSnackBar('Tidak dapat membuka URL pembayaran');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Error membuka pembayaran: ${e.toString()}');
-    }
-  }
-
-  void _clearCartUI() {
-    setState(() {
-      _cartItems.clear();
-      _tableNumberController.clear();
-      _selectedPaymentMethod = null;
-      _paymentMethods.clear();
-    });
-    _showSuccessSnackBar('Pesanan telah selesai dengan sukses');
-  }
-
-  Map<String, int> _getCartSummary() {
-    final subtotal = _cartItems.fold<int>(0, (sum, item) {
-      final product = _productCache[item.productId];
-      return sum + ((product?.price ?? 0) * item.quantity);
-    });
-
-    final paymentFee = _selectedPaymentMethod?.totalFee ?? 0;
-    final total = subtotal + paymentFee;
-
-    return {'subtotal': subtotal, 'paymentFee': paymentFee, 'total': total};
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.red),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
-  }
-
-  String _formatCurrency(int amount) {
-    return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-  }
-
-  void _navigateToLogin() {
-    Navigator.pushNamed(context, '/login').then((_) {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (!AuthService.isLoggedIn) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.login, size: 80, color: AppColors.grey),
-              const SizedBox(height: 16),
-              Text(
-                'Silahkan masuk untuk melihat keranjang anda',
-                style: TextStyle(fontSize: 16, color: AppColors.grey),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _navigateToLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                ),
-                child: const Text('Masuk'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: _cartItems.isEmpty ? _buildEmptyCart() : _buildCartContent(),
-    );
-  }
-
-  Widget _buildEmptyCart() {
+  Widget _buildEmptyCart(CartController controller) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -346,7 +80,7 @@ class _CartPageState extends State<CartPage> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadCartItems,
+            onPressed: () => controller.refresh(),
             child: const Text('Refresh'),
           ),
         ],
@@ -354,31 +88,36 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildCartContent() {
-    final cartSummary = _getCartSummary();
+  Widget _buildCartContent(CartController cartController) {
+    final tableNumberController = TextEditingController();
+    final productController = Get.find<ProductController>();
 
     return RefreshIndicator(
-      onRefresh: _loadCartItems,
+      onRefresh: () => cartController.refresh(),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             // Cart Items List
             Expanded(
-              child: ListView.builder(
-                itemCount: _cartItems.length,
-                itemBuilder: (context, index) {
-                  final item = _cartItems[index];
-                  final product = _productCache[item.productId];
-                  return _buildCartItemCard(item, product);
-                },
+              child: Obx(
+                () => ListView.builder(
+                  itemCount: cartController.cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = cartController.cartItems[index];
+                    final product = productController.getProductById(
+                      item.productId,
+                    );
+                    return _buildCartItemCard(item, product, cartController);
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 12),
 
             // Table Number
             TextField(
-              controller: _tableNumberController,
+              controller: tableNumberController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Nomor Meja',
@@ -390,104 +129,109 @@ class _CartPageState extends State<CartPage> {
             const SizedBox(height: 16),
 
             // Payment Method Dropdown
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.grey),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: _isLoadingPaymentMethods
-                  ? const Row(
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 12),
-                        Text('Memuat metode pembayaran...'),
-                      ],
-                    )
-                  : DropdownButtonHideUnderline(
-                      child: DropdownButton<PaymentMethod>(
-                        isExpanded: true,
-                        value: _selectedPaymentMethod,
-                        hint: const Text('Pilih Metode Pembayaran'),
-                        items: _paymentMethods.map((PaymentMethod method) {
-                          return DropdownMenuItem<PaymentMethod>(
-                            value: method,
-                            child: Row(
-                              children: [
-                                // Payment method image (if available)
-                                if (method.paymentImage.isNotEmpty)
-                                  Image.network(
-                                    method.paymentImage,
-                                    width: 24,
-                                    height: 24,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Icon(
-                                        Icons.payment,
-                                        size: 24,
-                                      );
-                                    },
-                                  )
-                                else
-                                  const Icon(Icons.payment, size: 24),
-                                const SizedBox(width: 8),
-                                Expanded(child: Text(method.paymentName)),
-                                if (method.totalFee > 0)
-                                  Text(
-                                    '+Rp ${_formatCurrency(method.totalFee)}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.orange,
+            Obx(
+              () => Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.grey),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: cartController.isLoadingPayment
+                    ? const Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Memuat metode pembayaran...'),
+                        ],
+                      )
+                    : DropdownButtonHideUnderline(
+                        child: DropdownButton<PaymentMethod>(
+                          isExpanded: true,
+                          value: cartController.selectedPaymentMethod,
+                          hint: const Text('Pilih Metode Pembayaran'),
+                          items: cartController.paymentMethods.map((method) {
+                            return DropdownMenuItem<PaymentMethod>(
+                              value: method,
+                              child: Row(
+                                children: [
+                                  if (method.paymentImage.isNotEmpty)
+                                    Image.network(
+                                      method.paymentImage,
+                                      width: 24,
+                                      height: 24,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.payment,
+                                              size: 24,
+                                            );
+                                          },
+                                    )
+                                  else
+                                    const Icon(Icons.payment, size: 24),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(method.paymentName)),
+                                  if (method.totalFee > 0)
+                                    Text(
+                                      '+Rp ${_formatCurrency(method.totalFee)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.orange,
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (PaymentMethod? newValue) {
-                          setState(() {
-                            _selectedPaymentMethod = newValue;
-                          });
-                        },
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (method) {
+                            cartController.selectPaymentMethod(method);
+                          },
+                        ),
                       ),
-                    ),
+              ),
             ),
 
             const SizedBox(height: 20),
 
             // Payment Summary
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.grey.withAlpha(25),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.grey),
-              ),
-              child: Column(
-                children: [
-                  _buildSummaryRow(
-                    'Total Belanja',
-                    cartSummary['subtotal'] ?? 0,
-                  ),
-                  if ((cartSummary['paymentFee'] ?? 0) > 0) ...[
-                    const SizedBox(height: 8),
+            Obx(
+              () => Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.grey.withAlpha(25),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.grey),
+                ),
+                child: Column(
+                  children: [
                     _buildSummaryRow(
-                      'Biaya Admin',
-                      cartSummary['paymentFee'] ?? 0,
-                      color: AppColors.orange,
+                      'Total Belanja',
+                      cartController.calculateSubtotal(),
+                    ),
+                    if (cartController.calculatePaymentFee() > 0) ...[
+                      const SizedBox(height: 8),
+                      _buildSummaryRow(
+                        'Biaya Admin',
+                        cartController.calculatePaymentFee(),
+                        color: AppColors.orange,
+                      ),
+                    ],
+                    const Divider(height: 24, thickness: 1),
+                    _buildSummaryRow(
+                      'Total Pembayaran',
+                      cartController.calculateTotal(),
+                      bold: true,
                     ),
                   ],
-                  const Divider(height: 24, thickness: 1),
-                  _buildSummaryRow(
-                    'Total Pembayaran',
-                    cartSummary['total'] ?? 0,
-                    bold: true,
-                  ),
-                ],
+                ),
               ),
             ),
 
@@ -498,7 +242,8 @@ class _CartPageState extends State<CartPage> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isProcessingOrder ? null : _processOrder,
+                onPressed: () =>
+                    _processOrder(tableNumberController.text, cartController),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
@@ -506,31 +251,10 @@ class _CartPageState extends State<CartPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: _isProcessingOrder
-                    ? const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.white,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Text("Memproses..."),
-                        ],
-                      )
-                    : const Text(
-                        "Buat Pesanan & Bayar",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                child: const Text(
+                  "Buat Pesanan & Bayar",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -539,7 +263,11 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildCartItemCard(CartItem item, Product? product) {
+  Widget _buildCartItemCard(
+    CartItem item,
+    Product? product,
+    CartController controller,
+  ) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 2,
@@ -636,8 +364,10 @@ class _CartPageState extends State<CartPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       InkWell(
-                        onTap: () =>
-                            _updateQuantity(item.id, item.quantity - 1),
+                        onTap: () => controller.updateQuantity(
+                          item.id,
+                          item.quantity - 1,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: const Icon(Icons.remove, size: 16),
@@ -651,8 +381,10 @@ class _CartPageState extends State<CartPage> {
                         ),
                       ),
                       InkWell(
-                        onTap: () =>
-                            _updateQuantity(item.id, item.quantity + 1),
+                        onTap: () => controller.updateQuantity(
+                          item.id,
+                          item.quantity + 1,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: const Icon(Icons.add, size: 16),
@@ -664,7 +396,7 @@ class _CartPageState extends State<CartPage> {
                 const SizedBox(height: 8),
                 // Delete Button
                 InkWell(
-                  onTap: () => _removeItem(item.id),
+                  onTap: () => controller.removeFromCart(item.id),
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -712,6 +444,143 @@ class _CartPageState extends State<CartPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _processOrder(
+    String tableNumber,
+    CartController controller,
+  ) async {
+    if (tableNumber.trim().isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Silahkan masukkan nomor meja',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+      return;
+    }
+
+    if (controller.selectedPaymentMethod == null) {
+      Get.snackbar(
+        'Error',
+        'Silahkan pilih metode pembayaran',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+      return;
+    }
+
+    if (controller.cartItems.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Keranjang kosong',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+      return;
+    }
+
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    try {
+      final result = await controller.createOrder(tableNumber.trim());
+      Get.back(); // Close loading dialog
+
+      _showPaymentDialog(result);
+    } catch (e) {
+      Get.back(); // Close loading dialog
+      Get.snackbar(
+        'Error',
+        'Gagal membuat pesanan: ${e.toString()}',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+    }
+  }
+
+  void _showPaymentDialog(Map<String, dynamic> orderResult) {
+    final orderData = orderResult['data'];
+    final paymentUrl = orderData['payment_url'];
+
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Pesanan Berhasil Dibuat!'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pesanan Anda telah berhasil dibuat.'),
+            const SizedBox(height: 16),
+            Text('Invoice: ${orderData['nomor_invoice']}'),
+            Text(
+              'Total: Rp ${_formatCurrency((orderData['total_harga'] ?? 0).toInt())}',
+            ),
+            Text('Meja: ${orderData['nomor_meja']}'),
+            if (orderData['payment'] != null)
+              Text('Pembayaran: ${orderData['payment']['metode_pembayaran']}'),
+            const SizedBox(height: 16),
+            const Text(
+              'Anda akan diarahkan ke halaman pembayaran Duitku.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Nanti')),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              _openPaymentUrl(paymentUrl);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+            ),
+            child: const Text('Bayar Sekarang'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  Future<void> _openPaymentUrl(String paymentUrl) async {
+    try {
+      final uri = Uri.parse(paymentUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar(
+          'Error',
+          'Tidak dapat membuka URL pembayaran',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.red,
+          colorText: AppColors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Error membuka pembayaran: ${e.toString()}',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+    }
+  }
+
+  String _formatCurrency(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
     );
   }
 }

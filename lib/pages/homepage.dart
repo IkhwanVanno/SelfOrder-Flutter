@@ -1,400 +1,295 @@
 import 'package:flutter/material.dart';
-import 'package:selforder/services/api_service.dart';
-import 'package:selforder/services/auth_service.dart';
+import 'package:get/get.dart';
+import 'package:selforder/controllers/auth_controller.dart';
+import 'package:selforder/controllers/product_controller.dart';
+import 'package:selforder/controllers/cart_controller.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/theme/app_theme.dart';
 
-class _CategoryProduct {
-  final String image;
-  final String label;
-  final int? categoryId;
-
-  const _CategoryProduct({
-    required this.image,
-    required this.label,
-    this.categoryId,
-  });
-}
-
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  List<_CategoryProduct> _categories = [];
-  List<Product> _products = [];
-  List<Product> _filteredProducts = [];
-  int? _selectedCategoryId;
-  Map<int, int> _cartQuantities = {};
-  Map<int, int> _guestCartQuantities = {};
-  bool _isLoading = false;
-
-  late Function() _authListener;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupAuthListener();
-    _loadDataFromApi();
-    _loadCartQuantities();
-  }
-
-  @override
-  void dispose() {
-    AuthService.removeAuthStateListener(_authListener);
-    super.dispose();
-  }
-
-  void _setupAuthListener() {
-    _authListener = () {
-      if (mounted) {
-        setState(() {});
-        _loadCartQuantities();
-      }
-    };
-    AuthService.addAuthStateListener(_authListener);
-  }
-
-  Future<void> _loadDataFromApi() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final categoriesFromApi = await ApiService.fetchCategories();
-      final productsFromApi = await ApiService.fetchProducts();
-
-      setState(() {
-        _categories = [
-          const _CategoryProduct(
-            image: "assets/images/cafe.png",
-            label: "All",
-            categoryId: null,
-          ),
-          ...categoriesFromApi.map(
-            (c) => _CategoryProduct(
-              image: c.imageURL,
-              label: c.name,
-              categoryId: c.id,
-            ),
-          ),
-        ];
-        _products = productsFromApi;
-        _filterProducts();
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error: $e');
-      _showErrorSnackBar("Gagal memuat data dari server");
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadCartQuantities() async {
-    if (!AuthService.isLoggedIn) {
-      return;
-    }
-
-    try {
-      final cartItems = await ApiService.fetchCartItems();
-      final quantities = <int, int>{};
-
-      for (final item in cartItems) {
-        quantities[item.productId] = item.quantity;
-      }
-
-      setState(() {
-        _cartQuantities = quantities;
-      });
-    } catch (e) {
-      print('Gagal memuat kuantitas produk: $e');
-    }
-  }
-
-  void _filterProducts() {
-    setState(() {
-      _filteredProducts = _selectedCategoryId == null
-          ? _products
-          : _products
-                .where((product) => product.categoryId == _selectedCategoryId)
-                .toList();
-    });
-  }
-
-  void _selectCategory(int? categoryId) {
-    setState(() {
-      _selectedCategoryId = categoryId;
-      _filterProducts();
-    });
-  }
-
-  void _addToCart(Product product) async {
-    if (!AuthService.isLoggedIn) {
-      setState(() {
-        _guestCartQuantities[product.id] =
-            (_guestCartQuantities[product.id] ?? 0) + 1;
-      });
-      _showErrorSnackBar('Silahkan masuk terlebih dahulu');
-      return;
-    }
-
-    try {
-      await ApiService.addToCart(product.id, 1);
-      await _loadCartQuantities();
-      _showSuccessSnackBar(
-        '${product.name} Telah ditambahkan ke dalam keranjang',
-      );
-    } catch (e) {
-      _showErrorSnackBar('Gagal menambahkan ke keranjang: ${e.toString()}');
-    }
-  }
-
-  void _updateCartQuantity(Product product, int newQuantity) async {
-    if (!AuthService.isLoggedIn) {
-      setState(() {
-        if (newQuantity <= 0) {
-          _guestCartQuantities.remove(product.id);
-          _showSuccessSnackBar('${product.name} telah dihapus dari keranjang');
-        } else {
-          _guestCartQuantities[product.id] = newQuantity;
-        }
-      });
-      return;
-    }
-
-    try {
-      final currentCartQuantity = _cartQuantities[product.id] ?? 0;
-
-      if (newQuantity <= 0) {
-        final cartItems = await ApiService.fetchCartItems();
-        final cartItem = cartItems.firstWhere(
-          (item) => item.productId == product.id,
-          orElse: () => throw Exception('Barang keranjang tidak ditemukan'),
-        );
-        await ApiService.removeFromCart(cartItem.id);
-        _showSuccessSnackBar('${product.name} telah dihapus dari keranjang');
-      } else if (currentCartQuantity == 0) {
-        await ApiService.addToCart(product.id, newQuantity);
-      } else {
-        final cartItems = await ApiService.fetchCartItems();
-        final cartItem = cartItems.firstWhere(
-          (item) => item.productId == product.id,
-          orElse: () => throw Exception('Barang Keranjang tidak ditemukan'),
-        );
-        await ApiService.updateCartItem(cartItem.id, newQuantity);
-      }
-
-      await _loadCartQuantities();
-    } catch (e) {
-      _showErrorSnackBar('Gagal update keranjang: ${e.toString()}');
-    }
-  }
-
-  int _getCartQuantity(int productId) {
-    if (AuthService.isLoggedIn) {
-      return _cartQuantities[productId] ?? 0;
-    } else {
-      return _guestCartQuantities[productId] ?? 0;
-    }
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.green,
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.red,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final productController = Get.find<ProductController>();
+    final cartController = Get.find<CartController>();
+
     final screenWidth = MediaQuery.of(context).size.width;
     int crossAxisCount = 2;
     if (screenWidth > 600) crossAxisCount = 3;
     if (screenWidth > 900) crossAxisCount = 4;
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await _loadDataFromApi();
-          await _loadCartQuantities();
-        },
-        child: Column(
-          children: [
-            if (!AuthService.isLoggedIn)
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: AppColors.secondary,
-                child: Row(
-                  children: [
-                    const Icon(Icons.info, color: AppColors.yellow),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Anda belum masuk, silahkan masuk untuk order pesanan',
-                        style: TextStyle(fontSize: 12, color: AppColors.white),
+      body: Obx(() {
+        return RefreshIndicator(
+          onRefresh: () async {
+            await productController.refresh();
+            if (authController.isLoggedIn) {
+              await cartController.refresh();
+            }
+          },
+          child: Column(
+            children: [
+              // Login Warning Banner
+              if (!authController.isLoggedIn)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: AppColors.secondary,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info, color: AppColors.yellow),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Anda belum masuk, silahkan masuk untuk order pesanan',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.white,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+
+              // Categories Section
+              _buildCategoriesSection(productController),
+
+              // Products Section
+              Expanded(
+                child: _buildProductsSection(
+                  productController,
+                  cartController,
+                  authController,
+                  crossAxisCount,
                 ),
               ),
-            _buildCategoriesSection(),
-            _buildProductsSection(crossAxisCount),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
-  Widget _buildCategoriesSection() {
+  Widget _buildCategoriesSection(ProductController controller) {
     return Container(
       color: AppColors.accent.withAlpha(50),
       child: Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 8),
         child: SizedBox(
           height: 75,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final isSelected = _selectedCategoryId == category.categoryId;
-
-              return GestureDetector(
-                onTap: () => _selectCategory(category.categoryId),
-                child: Container(
-                  width: 70,
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withAlpha(50) : null,
-                    borderRadius: BorderRadius.circular(8),
-                    border: isSelected
-                        ? Border.all(color: AppColors.primary)
-                        : null,
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      category.image.startsWith('http')
-                          ? Image.network(
-                              category.image,
-                              height: 30,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Image.asset(
-                                  "assets/images/cafe.png",
-                                  height: 30,
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              category.image,
-                              height: 30,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Image.asset(
-                                  "assets/images/cafe.png",
-                                  height: 30,
-                                );
-                              },
-                            ),
-                      const SizedBox(height: 4),
-                      Text(
-                        category.label,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isSelected ? AppColors.black : null,
-                          fontWeight: isSelected ? FontWeight.bold : null,
-                        ),
-                      ),
-                    ],
-                  ),
+          child: Obx(() {
+            final allCategories = [
+              _CategoryItem(
+                image: "assets/images/cafe.png",
+                label: "All",
+                categoryId: null,
+              ),
+              ...controller.categories.map(
+                (c) => _CategoryItem(
+                  image: c.imageURL,
+                  label: c.name,
+                  categoryId: c.id,
                 ),
-              );
-            },
-          ),
+              ),
+            ];
+
+            return ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: allCategories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final category = allCategories[index];
+
+                return Obx(() {
+                  final isSelected =
+                      controller.selectedCategoryId == category.categoryId;
+
+                  return GestureDetector(
+                    onTap: () => controller.selectCategory(category.categoryId),
+                    child: Container(
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withAlpha(50)
+                            : null,
+                        borderRadius: BorderRadius.circular(8),
+                        border: isSelected
+                            ? Border.all(color: AppColors.primary)
+                            : null,
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          category.image.startsWith('http')
+                              ? Image.network(
+                                  category.image,
+                                  height: 30,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      "assets/images/cafe.png",
+                                      height: 30,
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  category.image,
+                                  height: 30,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      "assets/images/cafe.png",
+                                      height: 30,
+                                    );
+                                  },
+                                ),
+                          const SizedBox(height: 4),
+                          Text(
+                            category.label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSelected ? AppColors.black : null,
+                              fontWeight: isSelected ? FontWeight.bold : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                });
+              },
+            );
+          }),
         ),
       ),
     );
   }
 
-  Widget _buildProductsSection(int crossAxisCount) {
-    if (_isLoading) {
-      return const Expanded(child: Center(child: CircularProgressIndicator()));
-    }
+  Widget _buildProductsSection(
+    ProductController productController,
+    CartController cartController,
+    AuthController authController,
+    int crossAxisCount,
+  ) {
+    return Obx(() {
+      if (productController.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: _filteredProducts.isEmpty
-            ? _buildEmptyProducts()
-            : GridView.builder(
-                itemCount: _filteredProducts.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.65,
-                ),
-                itemBuilder: (context, index) {
-                  return ProductCard(
-                    product: _filteredProducts[index],
-                    cartQuantity: _getCartQuantity(_filteredProducts[index].id),
-                    onAddToCart: () => _addToCart(_filteredProducts[index]),
-                    onUpdateQuantity: (quantity) =>
-                        _updateCartQuantity(_filteredProducts[index], quantity),
-                  );
-                },
+      if (productController.filteredProducts.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 80, color: AppColors.grey),
+              const SizedBox(height: 16),
+              Text(
+                productController.selectedCategoryId == null
+                    ? 'Produk tidak ada'
+                    : 'Produk tidak ada dalam kategori ini',
+                style: TextStyle(fontSize: 16, color: AppColors.grey),
               ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyProducts() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: AppColors.grey),
-          const SizedBox(height: 16),
-          Text(
-            _selectedCategoryId == null
-                ? 'Produk tidak ada'
-                : 'Produk tidak ada dalam kategori ini',
-            style: TextStyle(fontSize: 16, color: AppColors.grey),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => productController.refresh(),
+                child: const Text('Refresh'),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          TextButton(onPressed: _loadDataFromApi, child: const Text('Refresh')),
-        ],
-      ),
-    );
+        );
+      }
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: GridView.builder(
+          itemCount: productController.filteredProducts.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.65,
+          ),
+          itemBuilder: (context, index) {
+            final product = productController.filteredProducts[index];
+
+            return Obx(() {
+              final cartQuantity = authController.isLoggedIn
+                  ? cartController.getCartQuantity(product.id)
+                  : productController.getGuestCartQuantity(product.id);
+
+              return _ProductCard(
+                product: product,
+                cartQuantity: cartQuantity,
+                isLoggedIn: authController.isLoggedIn,
+                onAddToCart: () async {
+                  if (authController.isLoggedIn) {
+                    await cartController.addToCart(product.id, 1);
+                  } else {
+                    productController.updateGuestCart(
+                      product.id,
+                      cartQuantity + 1,
+                    );
+                    Get.snackbar(
+                      'Info',
+                      'Silahkan masuk terlebih dahulu',
+                      snackPosition: SnackPosition.TOP,
+                      backgroundColor: AppColors.orange,
+                      colorText: AppColors.white,
+                    );
+                  }
+                },
+                onUpdateQuantity: (quantity) async {
+                  if (authController.isLoggedIn) {
+                    if (quantity <= 0) {
+                      final item = cartController.cartItems.firstWhere(
+                        (item) => item.productId == product.id,
+                      );
+                      await cartController.removeFromCart(item.id);
+                    } else {
+                      final item = cartController.cartItems.firstWhere(
+                        (item) => item.productId == product.id,
+                      );
+                      await cartController.updateQuantity(item.id, quantity);
+                    }
+                  } else {
+                    productController.updateGuestCart(product.id, quantity);
+                  }
+                },
+              );
+            });
+          },
+        ),
+      );
+    });
   }
 }
 
-class ProductCard extends StatelessWidget {
+class _CategoryItem {
+  final String image;
+  final String label;
+  final int? categoryId;
+
+  const _CategoryItem({
+    required this.image,
+    required this.label,
+    this.categoryId,
+  });
+}
+
+class _ProductCard extends StatelessWidget {
   final Product product;
   final int cartQuantity;
+  final bool isLoggedIn;
   final VoidCallback onAddToCart;
   final ValueChanged<int> onUpdateQuantity;
 
-  const ProductCard({
-    super.key,
+  const _ProductCard({
     required this.product,
     required this.cartQuantity,
+    required this.isLoggedIn,
     required this.onAddToCart,
     required this.onUpdateQuantity,
   });
@@ -533,13 +428,14 @@ class ProductCard extends StatelessWidget {
         height: 38,
         decoration: BoxDecoration(
           color: AppColors.grey,
+          border: Border.all(color: AppColors.primary, width: 1.5),
           borderRadius: BorderRadius.circular(24),
         ),
         child: const Center(
           child: Text(
             'Tidak tersedia',
             style: TextStyle(
-              color: AppColors.grey,
+              color: AppColors.white,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
