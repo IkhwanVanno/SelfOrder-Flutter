@@ -50,53 +50,29 @@ class AuthService {
   static Future<bool> loginWithGoogle() async {
     try {
       // METHOD 1: Using Web Client ID (requires proper OAuth configuration)
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId: '516512875441-vukhjmt5no8881br8huvebuj8f8ij91i.apps.googleusercontent.com',
-      );
+      // final GoogleSignIn googleSignIn = GoogleSignIn(
+      //   scopes: ['email', 'profile'],
+      //   serverClientId: '516512875441-rism1e8vde2hij21k7idv17cdeal3ltd.apps.googleusercontent.com',
+      // );
       
-      await googleSignIn.signOut();
-      
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account == null) {
-        print('Login Google dibatalkan pengguna.');
-        return false;
-      }
-      
-      final GoogleSignInAuthentication auth = await account.authentication;
-      
-      final idToken = auth.idToken;
-      final accessToken = auth.accessToken;
-      
-      if (idToken == null && accessToken == null) {
-        print('ID token dan access token null');
-        return false;
-      }
-      
-      final response = await http.post(
-        Uri.parse('${AppConfig.baseUrl}/google-login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'id_token': idToken,
-          'access_token': accessToken,
-        }),
-      );
-
-      // METHOD 2: Using basic user data (current method - simpler, no Web Client ID needed)
-      // COMMENT FROM HERE ↓
-      // final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
-
       // await googleSignIn.signOut();
-
+      
       // final GoogleSignInAccount? account = await googleSignIn.signIn();
       // if (account == null) {
       //   print('Login Google dibatalkan pengguna.');
       //   return false;
       // }
-
+      
+      // final GoogleSignInAuthentication auth = await account.authentication;
+      
+      // final idToken = auth.idToken;
+      // final accessToken = auth.accessToken;
+      
+      // if (idToken == null && accessToken == null) {
+      //   print('ID token dan access token null');
+      //   return false;
+      // }
+      
       // final response = await http.post(
       //   Uri.parse('${AppConfig.baseUrl}/google-login'),
       //   headers: {
@@ -104,12 +80,36 @@ class AuthService {
       //     'Accept': 'application/json',
       //   },
       //   body: jsonEncode({
-      //     'email': account.email,
-      //     'display_name': account.displayName ?? '',
-      //     'photo_url': account.photoUrl ?? '',
-      //     'id': account.id,
+      //     'id_token': idToken,
+      //     'access_token': accessToken,
       //   }),
       // );
+
+      // METHOD 2: Using basic user data (current method - simpler, no Web Client ID needed)
+      // COMMENT FROM HERE ↓
+      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
+
+      await googleSignIn.signOut();
+
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) {
+        print('Login Google dibatalkan pengguna.');
+        return false;
+      }
+
+      final response = await http.post(
+        Uri.parse('${AppConfig.baseUrl}/google-login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'email': account.email,
+          'display_name': account.displayName ?? '',
+          'photo_url': account.photoUrl ?? '',
+          'id': account.id,
+        }),
+      );
       // COMMENT UNTIL HERE ↑
 
       if (response.statusCode == 200) {
