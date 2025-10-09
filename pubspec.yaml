@@ -16,6 +16,7 @@ dependencies:
   intl: ^0.20.2 # Format tanggal/mata uang
   http: ^1.1.0 # Call API
   url_launcher: ^6.2.5 # Open URL
+  google_sign_in: ^6.1.6 # Google Auth Sign-in
   open_file: ^3.5.10 # Open File PDF
   permission_handler: ^11.3.1 # Izin akses Android/Ios
   shared_preferences: ^2.5.3 # Simpan data lokal
@@ -51,3 +52,4 @@ flutter:
   assets:
     - assets/images/
     - assets/images/cafe.png
+    - assets/images/google.png

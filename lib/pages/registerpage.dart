@@ -228,6 +228,59 @@ class RegisterPage extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Register / Login with Google
+                    Obx(
+                      () => SizedBox(
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: authController.isLoading
+                              ? null
+                              : () async {
+                                  final success = await authController
+                                      .loginWithGoogle();
+                                  if (success) {
+                                    Get.snackbar(
+                                      'Berhasil',
+                                      'Login Google berhasil!',
+                                      snackPosition: SnackPosition.TOP,
+                                      backgroundColor: AppColors.green,
+                                      colorText: AppColors.white,
+                                    );
+                                    await Future.delayed(
+                                      const Duration(milliseconds: 500),
+                                    );
+                                    Get.offAllNamed(AppRoutes.MAIN);
+                                  } else {
+                                    Get.snackbar(
+                                      'Gagal',
+                                      'Login Google gagal!',
+                                      snackPosition: SnackPosition.TOP,
+                                      backgroundColor: AppColors.red,
+                                      colorText: AppColors.white,
+                                    );
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            side: const BorderSide(color: Colors.grey),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: Image.asset(
+                            'assets/images/google.png',
+                            height: 24,
+                            width: 24,
+                          ),
+                          label: authController.isLoading
+                              ? const Text('Masuk dengan Google...')
+                              : const Text('Daftar/Masuk dengan Google'),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
