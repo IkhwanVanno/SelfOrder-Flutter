@@ -7,8 +7,11 @@ import 'session_manager.dart';
 
 class AuthService {
   static Member? _currentUser;
-
   static List<Function()> _authStateListeners = [];
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
+
   static Member? get currentUser => _currentUser;
   static bool get isLoggedIn =>
       SessionManager.isLoggedIn && _currentUser != null;
@@ -47,90 +50,6 @@ class AuthService {
     }
   }
 
-  static Future<bool> loginWithGoogle() async {
-    try {
-      // METHOD 1: Using Web Client ID (requires proper OAuth configuration)
-      // final GoogleSignIn googleSignIn = GoogleSignIn(
-      //   scopes: ['email', 'profile'],
-      //   serverClientId: '516512875441-rism1e8vde2hij21k7idv17cdeal3ltd.apps.googleusercontent.com',
-      // );
-      
-      // await googleSignIn.signOut();
-      
-      // final GoogleSignInAccount? account = await googleSignIn.signIn();
-      // if (account == null) {
-      //   print('Login Google dibatalkan pengguna.');
-      //   return false;
-      // }
-      
-      // final GoogleSignInAuthentication auth = await account.authentication;
-      
-      // final idToken = auth.idToken;
-      // final accessToken = auth.accessToken;
-      
-      // if (idToken == null && accessToken == null) {
-      //   print('ID token dan access token null');
-      //   return false;
-      // }
-      
-      // final response = await http.post(
-      //   Uri.parse('${AppConfig.baseUrl}/google-login'),
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Accept': 'application/json',
-      //   },
-      //   body: jsonEncode({
-      //     'id_token': idToken,
-      //     'access_token': accessToken,
-      //   }),
-      // );
-
-      // METHOD 2: Using basic user data (current method - simpler, no Web Client ID needed)
-      // COMMENT FROM HERE ↓
-      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
-
-      await googleSignIn.signOut();
-
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account == null) {
-        print('Login Google dibatalkan pengguna.');
-        return false;
-      }
-
-      final response = await http.post(
-        Uri.parse('${AppConfig.baseUrl}/google-login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'email': account.email,
-          'display_name': account.displayName ?? '',
-          'photo_url': account.photoUrl ?? '',
-          'id': account.id,
-        }),
-      );
-      // COMMENT UNTIL HERE ↑
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _currentUser = Member.fromJson(data['user']);
-
-        final cookie = response.headers['set-cookie'];
-        await SessionManager.saveSession(data['user'], cookie);
-
-        _notifyAllAuthStateListeners();
-        return true;
-      } else {
-        print('Login Google gagal: ${response.statusCode} ${response.body}');
-        return false;
-      }
-    } catch (e) {
-      print('Error login Google: $e');
-      return false;
-    }
-  }
-
   static Future<bool> login(String email, String password) async {
     try {
       final url = Uri.parse('${AppConfig.baseUrl}/login');
@@ -159,6 +78,58 @@ class AuthService {
       }
     } catch (e) {
       print('Login error: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> loginWithGoogle() async {
+    try {
+      await _googleSignIn.signOut();
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        print('Google Sign-In cancelled by user');
+        return false;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final url = Uri.parse('${AppConfig.baseUrl}/google-auth');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'id_token': googleAuth.idToken,
+          'access_token': googleAuth.accessToken,
+          'email': googleUser.email,
+          'display_name': googleUser.displayName,
+          'photo_url': googleUser.photoUrl,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _currentUser = Member.fromJson(data['user']);
+
+        final cookie = response.headers['set-cookie'];
+        await SessionManager.saveSession(data['user'], cookie);
+
+        _notifyAllAuthStateListeners();
+        return true;
+      } else {
+        print('Google login failed: ${response.statusCode}');
+        print('Response: ${response.body}');
+        await _googleSignIn.signOut();
+        return false;
+      }
+    } catch (e) {
+      print('Google Sign-In error: $e');
+      await _googleSignIn.signOut();
       return false;
     }
   }
@@ -277,8 +248,10 @@ class AuthService {
         final url = Uri.parse('${AppConfig.baseUrl}/logout');
         await http.post(url, headers: SessionManager.getHeaders());
       }
+
+      await _googleSignIn.signOut();
     } catch (e) {
-      print('Logout API error: $e');
+      print('Logout error: $e');
     } finally {
       _currentUser = null;
       await SessionManager.clearSession();
@@ -299,12 +272,10 @@ class AuthService {
     }
   }
 
-  // Method to clear all listeners (useful for cleanup)
   static void clearAuthStateListeners() {
     _authStateListeners.clear();
   }
 
-  // Forgot Password
   static Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
       final url = Uri.parse('${AppConfig.baseUrl}/forgotpassword');
@@ -326,7 +297,6 @@ class AuthService {
               'Link atur ulang kata sandi telah dikirim ke email Anda.',
         };
       } else {
-        // Handle error responses
         try {
           final data = jsonDecode(response.body);
           return {

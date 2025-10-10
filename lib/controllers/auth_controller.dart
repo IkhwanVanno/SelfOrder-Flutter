@@ -28,13 +28,31 @@ class AuthController extends GetxController {
         if (user != null) {
           _currentUser.value = user;
           _isLoggedIn.value = true;
-
-          // Load data setelah login
           await _loadUserData();
         }
       }
     } catch (e) {
       print('Check login error: $e');
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  Future<bool> login(String email, String password) async {
+    _isLoading.value = true;
+    try {
+      final success = await AuthService.login(email, password);
+      if (success) {
+        final user = await AuthService.fetchCurrentMember();
+        _currentUser.value = user;
+        _isLoggedIn.value = true;
+        await _loadUserData();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Login error: $e');
+      return false;
     } finally {
       _isLoading.value = false;
     }
@@ -53,29 +71,7 @@ class AuthController extends GetxController {
       }
       return false;
     } catch (e) {
-      print('Login Google Error: $e');
-      return false;
-    } finally {
-      _isLoading.value = false;
-    }
-  }
-
-  Future<bool> login(String email, String password) async {
-    _isLoading.value = true;
-    try {
-      final success = await AuthService.login(email, password);
-      if (success) {
-        final user = await AuthService.fetchCurrentMember();
-        _currentUser.value = user;
-        _isLoggedIn.value = true;
-
-        // Load semua data user setelah login
-        await _loadUserData();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('Login error: $e');
+      print('Google login error: $e');
       return false;
     } finally {
       _isLoading.value = false;
@@ -153,8 +149,6 @@ class AuthController extends GetxController {
       await AuthService.logout();
       _currentUser.value = null;
       _isLoggedIn.value = false;
-
-      // Clear semua data
       _clearUserData();
     } catch (e) {
       print('Logout error: $e');
@@ -163,20 +157,16 @@ class AuthController extends GetxController {
     }
   }
 
-  // Load semua data yang dibutuhkan user setelah login
   Future<void> _loadUserData() async {
     try {
-      // Load products (shared untuk semua user)
       if (Get.isRegistered<ProductController>()) {
         await Get.find<ProductController>().loadProducts();
       }
 
-      // Load cart items (specific untuk user)
       if (Get.isRegistered<CartController>()) {
         await Get.find<CartController>().loadCartItems();
       }
 
-      // Load orders (specific untuk user)
       if (Get.isRegistered<OrderController>()) {
         await Get.find<OrderController>().loadOrders();
       }
@@ -185,7 +175,6 @@ class AuthController extends GetxController {
     }
   }
 
-  // Clear semua data saat logout
   void _clearUserData() {
     if (Get.isRegistered<CartController>()) {
       Get.find<CartController>().clearCart();

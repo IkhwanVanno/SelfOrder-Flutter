@@ -35,7 +35,6 @@ class LoginPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo
                     Obx(() {
                       final siteConfig = siteConfigController.siteConfig;
                       if (siteConfig != null &&
@@ -67,7 +66,6 @@ class LoginPage extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // Title
                     Obx(() {
                       final siteConfig = siteConfigController.siteConfig;
                       return Text(
@@ -81,7 +79,6 @@ class LoginPage extends StatelessWidget {
                     }),
                     const SizedBox(height: 32),
 
-                    // Email Field
                     TextFormField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -105,7 +102,6 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // Password Field
                     Obx(
                       () => TextFormField(
                         controller: passwordController,
@@ -145,7 +141,6 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // Login Button
                     Obx(
                       () => SizedBox(
                         height: 50,
@@ -196,41 +191,16 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
 
-                    // Login with Google
                     Obx(
                       () => SizedBox(
                         height: 50,
-                        child: ElevatedButton.icon(
+                        child: OutlinedButton.icon(
                           onPressed: authController.isLoading
                               ? null
-                              : () async {
-                                  final success = await authController
-                                      .loginWithGoogle();
-                                  if (success) {
-                                    Get.snackbar(
-                                      'Berhasil',
-                                      'Login Google berhasil!',
-                                      snackPosition: SnackPosition.TOP,
-                                      backgroundColor: AppColors.green,
-                                      colorText: AppColors.white,
-                                    );
-                                    await Future.delayed(
-                                      const Duration(milliseconds: 500),
-                                    );
-                                    Get.offAllNamed(AppRoutes.MAIN);
-                                  } else {
-                                    Get.snackbar(
-                                      'Gagal',
-                                      'Login Google gagal!',
-                                      snackPosition: SnackPosition.TOP,
-                                      backgroundColor: AppColors.red,
-                                      colorText: AppColors.white,
-                                    );
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
+                              : () => _handleGoogleLogin(authController),
+                          style: OutlinedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
+                            foregroundColor: Colors.black87,
                             side: const BorderSide(color: Colors.grey),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -241,16 +211,13 @@ class LoginPage extends StatelessWidget {
                             height: 24,
                             width: 24,
                           ),
-                          label: authController.isLoading
-                              ? const Text('Masuk dengan Google...')
-                              : const Text('Masuk dengan Google'),
+                          label: const Text('Masuk dengan Google'),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 16),
 
-                    // Register & Forgot Password Links
                     Column(
                       children: [
                         TextButton(
@@ -329,6 +296,29 @@ class LoginPage extends StatelessWidget {
       Get.snackbar(
         'Error',
         'Gagal Masuk! Periksa email dan password.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+    }
+  }
+
+  Future<void> _handleGoogleLogin(AuthController authController) async {
+    final success = await authController.loginWithGoogle();
+    if (success) {
+      Get.snackbar(
+        'Berhasil',
+        'Login Google berhasil!',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.green,
+        colorText: AppColors.white,
+      );
+      await Future.delayed(const Duration(milliseconds: 500));
+      Get.offAllNamed(AppRoutes.MAIN);
+    } else {
+      Get.snackbar(
+        'Gagal',
+        'Login Google dibatalkan atau gagal!',
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.red,
         colorText: AppColors.white,

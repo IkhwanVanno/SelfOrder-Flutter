@@ -21,6 +21,9 @@ dependencies:
   permission_handler: ^11.3.1 # Izin akses Android/Ios
   shared_preferences: ^2.5.3 # Simpan data lokal
   path_provider: ^2.1.5 # Akses Directory Device
+  firebase_core: ^4.1.1 # firebase core
+  firebase_auth: ^6.1.0 # firebase auth
+
   
 dev_dependencies:
   flutter_launcher_icons: "^0.14.4"

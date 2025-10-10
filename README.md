@@ -22,7 +22,7 @@
 git clone <repository-url>
 cd SelfOrder
 flutter pub get
-```
+````
 
 ### 2. Jalankan Project
 
@@ -32,46 +32,41 @@ flutter run
 
 ---
 
-## 🔐 Konfigurasi Keystore
+## 🔐 Konfigurasi Login Google (Firebase)
 
-### 🔸 Membuat Keystore untuk Rilis
+### Langkah Umum (Android & iOS)
 
-Gunakan perintah berikut untuk membuat file keystore:
+1. **Masuk ke Firebase Console**:
+   [https://console.firebase.google.com](https://console.firebase.google.com)
 
-```bash
-keytool -genkey -v -keystore selforder.keystore -alias selforder-key -keyalg RSA -keysize 2048 -validity 10000
-```
+2. **Buat atau pilih project Firebase** yang akan digunakan.
 
-Keterangan:
+3. **Tambahkan aplikasi Android dan iOS**:
 
-* `selforder.keystore`: Nama file keystore (boleh diubah).
-* `selforder-key`: Alias dari kunci (bebas, misalnya `release-key`).
-* `-keysize 2048`: Ukuran kunci.
-* `-validity 10000`: Masa berlaku sertifikat dalam hari.
+   * Untuk Android, masukkan `applicationId` (misal: `com.example.selforder`)
+   * Untuk iOS, masukkan `Bundle ID` (misal: `com.example.selforder`)
 
-📌 Saat perintah dijalankan, Anda akan diminta mengisi:
+4. **Unduh file konfigurasi dari Firebase**:
 
-* Password untuk keystore
-* Nama lengkap, organisasi, kota, negara, dll
-* Password untuk alias (boleh disamakan dengan keystore password)
+   * **Android:** Unduh `google-services.json`
+   * **iOS:** Unduh `GoogleService-Info.plist`
 
----
+5. **Letakkan file ke folder berikut**:
 
-## 🔍 Mendapatkan SHA1 Fingerprint
+   ```
+   android/app/google-services.json
+   ios/Runner/GoogleService-Info.plist
+   ```
 
-### Untuk Keystore Rilis:
+6. **Tambahkan SHA-1 debug ke Firebase** (jika login Google tidak bekerja):
 
-```bash
-keytool -list -v -keystore selforder.keystore -alias selforder-key
-```
+   Jalankan perintah berikut di terminal:
 
-### Untuk Keystore Debug (Google Login):
+   ```bash
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+   ```
 
-```bash
-keytool -list -v -keystore "C:\Users\<UserPCName>\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
-```
-
-📌 Masukkan SHA1 fingerprint ini ke Google Developer Console pada bagian **OAuth 2.0 Client ID**.
+   Masukkan SHA-1 ke Firebase Console > Project Settings > Android App.
 
 ---
 
@@ -80,6 +75,8 @@ keytool -list -v -keystore "C:\Users\<UserPCName>\.android\debug.keystore" -alia
 * [Flutter Codelab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
 * [Flutter Cookbook (Contoh-contoh Praktis)](https://docs.flutter.dev/cookbook)
 * [Flutter Documentation (Official)](https://docs.flutter.dev)
+* [Google Sign-In for Flutter](https://pub.dev/packages/google_sign_in)
+* [Firebase Console](https://console.firebase.google.com/)
 
 ---
 
