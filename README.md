@@ -6,11 +6,11 @@
 
 ## 🚀 Fitur Utama
 
-* 🔐 Login dengan akun Google
-* 💳 Integrasi pembayaran menggunakan **Duitku**
-* 🧾 Unduh dan simpan file PDF invoice
-* 📧 Pengiriman invoice melalui email
-* 📡 Komunikasi API dengan backend **Silverstripe RESTful API**
+- 🔐 Login dengan akun Google
+- 💳 Integrasi pembayaran menggunakan **Duitku**
+- 🧾 Unduh dan simpan file PDF invoice
+- 📧 Pengiriman invoice melalui email
+- 📡 Komunikasi API dengan backend **Silverstripe RESTful API**
 
 ---
 
@@ -22,7 +22,7 @@
 git clone <repository-url>
 cd SelfOrder
 flutter pub get
-````
+```
 
 ### 2. Jalankan Project
 
@@ -43,13 +43,13 @@ flutter run
 
 3. **Tambahkan aplikasi Android dan iOS**:
 
-   * Untuk Android, masukkan `applicationId` (misal: `com.example.selforder`)
-   * Untuk iOS, masukkan `Bundle ID` (misal: `com.example.selforder`)
+   - Untuk Android, masukkan `applicationId` (misal: `com.example.selforder`)
+   - Untuk iOS, masukkan `Bundle ID` (misal: `com.example.selforder`)
 
 4. **Unduh file konfigurasi dari Firebase**:
 
-   * **Android:** Unduh `google-services.json`
-   * **iOS:** Unduh `GoogleService-Info.plist`
+   - **Android:** Unduh `google-services.json`
+   - **iOS:** Unduh `GoogleService-Info.plist`
 
 5. **Letakkan file ke folder berikut**:
 
@@ -63,7 +63,16 @@ flutter run
    Jalankan perintah berikut di terminal:
 
    ```bash
-   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+   keytool -genkey -v -keystore "C:\Users\PCUSERNAME\.android\debug.keystore" -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US"
+   ```
+
+   ## cara chek debugkey(keyStore)
+   ```bash
+   .\gradlew signingReport 
+   ```
+   # atau
+   ```bash
+   keytool -list -v -keystore "C:\Users\PCUSERNAME\.android\debug.keystore" -storepass android
    ```
 
    Masukkan SHA-1 ke Firebase Console > Project Settings > Android App.
@@ -72,24 +81,24 @@ flutter run
 
 ## 📚 Referensi
 
-* [Flutter Codelab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-* [Flutter Cookbook (Contoh-contoh Praktis)](https://docs.flutter.dev/cookbook)
-* [Flutter Documentation (Official)](https://docs.flutter.dev)
-* [Google Sign-In for Flutter](https://pub.dev/packages/google_sign_in)
-* [Firebase Console](https://console.firebase.google.com/)
+- [Flutter Codelab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter Cookbook (Contoh-contoh Praktis)](https://docs.flutter.dev/cookbook)
+- [Flutter Documentation (Official)](https://docs.flutter.dev)
+- [Google Sign-In for Flutter](https://pub.dev/packages/google_sign_in)
+- [Firebase Console](https://console.firebase.google.com/)
 
 ---
 
 ## 🛠 Teknologi
 
-* Flutter SDK
-* Silverstripe CMS + RESTful API
-* Duitku Payment Gateway
-* Google Sign-In
-* Email Sender (Invoice)
+- Flutter SDK
+- Silverstripe CMS + RESTful API
+- Duitku Payment Gateway
+- Google Sign-In
+- Email Sender (Invoice)
 
 ---
 
-Jika kamu butuh bantuan lebih lanjut atau ingin kontribusi ke proyek ini, silakan buat *issue* atau *pull request*.
+Jika kamu butuh bantuan lebih lanjut atau ingin kontribusi ke proyek ini, silakan buat _issue_ atau _pull request_.
 
 ---
