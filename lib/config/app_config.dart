@@ -1,3 +1,3 @@
 class AppConfig {
-  static const String baseUrl = 'https://ungravitative-unvoluptuous-eula.ngrok-free.dev/SelfOrder-Silverstripe/api';
+  static const String baseUrl = 'https://1c3f11e2b55d.ngrok-free.app/SelfOrder-Silverstripe/api';
 }

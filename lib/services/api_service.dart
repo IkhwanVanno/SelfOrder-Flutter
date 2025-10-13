@@ -123,7 +123,7 @@ class ApiService {
     }
   }
 
-  static Future<void> addToCart(int productId, int quantity) async {
+  static Future<CartItem> addToCart(int productId, int quantity) async {
     if (!SessionManager.isLoggedIn) {
       throw Exception('Please login to add items to cart');
     }
@@ -139,12 +139,19 @@ class ApiService {
 
     _handleResponse(response);
 
-    if (response.statusCode != 201) {
+    if (response.statusCode == 201) {
+      final jsonData = jsonDecode(response.body);
+      if (jsonData['success'] == true && jsonData['data'] != null) {
+        return CartItem.fromJson(jsonData['data']);
+      } else {
+        throw Exception('Invalid response format');
+      }
+    } else {
       throw Exception('Failed to add item to cart');
     }
   }
 
-  static Future<void> updateCartItem(int cartItemId, int quantity) async {
+  static Future<CartItem> updateCartItem(int cartItemId, int quantity) async {
     if (!SessionManager.isLoggedIn) {
       throw Exception('Please login to update cart');
     }
@@ -157,7 +164,14 @@ class ApiService {
 
     _handleResponse(response);
 
-    if (response.statusCode != 200) {
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      if (jsonData['success'] == true && jsonData['data'] != null) {
+        return CartItem.fromJson(jsonData['data']);
+      } else {
+        throw Exception('Invalid response format');
+      }
+    } else {
       throw Exception('Failed to update cart item');
     }
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:selforder/controllers/order_controller.dart';
 import 'package:selforder/models/cartitem_model.dart';
@@ -14,6 +16,10 @@ class CartController extends GetxController {
   final _isLoading = false.obs;
   final _isLoadingPayment = false.obs;
 
+  // Debounce timer untuk setiap product
+  final Map<int, Timer?> _debounceTimers = {};
+  final Map<int, int> _pendingQuantities = {};
+
   List<CartItem> get cartItems => _cartItems;
   List<PaymentMethod> get paymentMethods => _paymentMethods;
   PaymentMethod? get selectedPaymentMethod => _selectedPaymentMethod.value;
@@ -25,6 +31,15 @@ class CartController extends GetxController {
   AuthController get _authController => Get.find<AuthController>();
   ProductController get _productController => Get.find<ProductController>();
 
+  @override
+  void onClose() {
+    _debounceTimers.forEach((key, timer) {
+      timer?.cancel();
+    });
+    _debounceTimers.clear();
+    super.onClose();
+  }
+
   Future<void> loadCartItems() async {
     if (!_authController.isLoggedIn) {
       _cartItems.clear();
@@ -35,8 +50,6 @@ class CartController extends GetxController {
     try {
       final items = await ApiService.fetchCartItems();
       _cartItems.value = items;
-
-      // Load payment methods jika cart tidak kosong
       if (_cartItems.isNotEmpty) {
         await loadPaymentMethods();
       }
@@ -76,53 +89,72 @@ class CartController extends GetxController {
     }
 
     try {
-      await ApiService.addToCart(productId, quantity);
-
-      // Update local cart
+      // Optimistic update
       final existingIndex = _cartItems.indexWhere(
         (item) => item.productId == productId,
       );
+      int tempId = DateTime.now().millisecondsSinceEpoch;
+
       if (existingIndex >= 0) {
-        // Update existing item
         final item = _cartItems[existingIndex];
-        _cartItems[existingIndex] = CartItem(
-          id: item.id,
-          quantity: item.quantity + quantity,
-          productId: item.productId,
-        );
+        final newQuantity = item.quantity + quantity;
+        _cartItems[existingIndex] = item.copyWith(quantity: newQuantity);
       } else {
-        // Add new item (ID akan di-update saat load ulang, tapi untuk UI sudah cukup)
         _cartItems.add(
-          CartItem(
-            id: DateTime.now().millisecondsSinceEpoch, // Temporary ID
-            quantity: quantity,
-            productId: productId,
-          ),
+          CartItem(id: tempId, quantity: quantity, productId: productId),
         );
       }
 
-      // Load payment methods jika belum ada
-      if (_paymentMethods.isEmpty) {
-        await loadPaymentMethods();
-      }
+      // Simpan quantity terbaru untuk debounce
+      _pendingQuantities[productId] =
+          (_pendingQuantities[productId] ?? 0) + quantity;
 
-      final product = _productController.getProductById(productId);
-      Get.snackbar(
-        'Berhasil',
-        '${product?.name ?? "Item"} ditambahkan ke keranjang',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
-      );
+      // Jalankan debounce
+      _debounceApiCall(productId, () async {
+        final qtyToSend = _pendingQuantities[productId] ?? quantity;
+        _pendingQuantities.remove(productId);
+
+        try {
+          final serverCartItem = await ApiService.addToCart(
+            productId,
+            qtyToSend,
+          );
+
+          // Ganti item temporary dengan ID server
+          final index = _cartItems.indexWhere(
+            (item) => item.productId == productId,
+          );
+          if (index >= 0) {
+            _cartItems[index] = serverCartItem;
+          }
+
+          if (_paymentMethods.isEmpty) {
+            await loadPaymentMethods();
+          }
+
+          final product = _productController.getProductById(productId);
+          Get.snackbar(
+            'Berhasil',
+            '${product?.name ?? "Item"} ditambahkan ke keranjang',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.green,
+            colorText: AppColors.white,
+            duration: const Duration(seconds: 2),
+          );
+        } catch (e) {
+          print('API Error: $e');
+          _rollbackCartItem(productId, tempId);
+          Get.snackbar(
+            'Error',
+            'Gagal menambahkan ke keranjang',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.red,
+            colorText: AppColors.white,
+          );
+        }
+      });
     } catch (e) {
       print('Add to cart error: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal menambahkan ke keranjang',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
-      );
     }
   }
 
@@ -133,53 +165,134 @@ class CartController extends GetxController {
     }
 
     try {
-      await ApiService.updateCartItem(cartItemId, newQuantity);
-
-      // Update local
+      // 1. Optimistic Update
       final index = _cartItems.indexWhere((item) => item.id == cartItemId);
-      if (index >= 0) {
-        final item = _cartItems[index];
-        _cartItems[index] = CartItem(
-          id: item.id,
-          quantity: newQuantity,
-          productId: item.productId,
-        );
-      }
-    } catch (e) {
-      print('Update cart error: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memperbarui keranjang',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      if (index < 0) return;
+
+      final item = _cartItems[index];
+      final oldQuantity = item.quantity;
+
+      _cartItems[index] = CartItem(
+        id: item.id,
+        quantity: newQuantity,
+        productId: item.productId,
       );
+
+      // 2. Debounce API call
+      _debounceApiCall(item.productId, () async {
+        try {
+          // 3. API Call
+          final serverCartItem = await ApiService.updateCartItem(
+            cartItemId,
+            newQuantity,
+          );
+
+          // 4. Update dengan data dari server
+          final currentIndex = _cartItems.indexWhere(
+            (item) => item.id == cartItemId,
+          );
+
+          if (currentIndex >= 0) {
+            _cartItems[currentIndex] = serverCartItem;
+          }
+        } catch (e) {
+          print('Update cart error: $e');
+
+          // Rollback ke quantity sebelumnya
+          final rollbackIndex = _cartItems.indexWhere(
+            (item) => item.id == cartItemId,
+          );
+
+          if (rollbackIndex >= 0) {
+            _cartItems[rollbackIndex] = CartItem(
+              id: item.id,
+              quantity: oldQuantity,
+              productId: item.productId,
+            );
+          }
+
+          Get.snackbar(
+            'Error',
+            'Gagal memperbarui keranjang',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.red,
+            colorText: AppColors.white,
+          );
+        }
+      });
+    } catch (e) {
+      print('Update quantity error: $e');
     }
   }
 
   Future<void> removeFromCart(int cartItemId) async {
     try {
-      await ApiService.removeFromCart(cartItemId);
+      // 1. Simpan item untuk rollback
+      final itemIndex = _cartItems.indexWhere((item) => item.id == cartItemId);
+      if (itemIndex < 0) return;
 
-      // Remove from local
-      _cartItems.removeWhere((item) => item.id == cartItemId);
+      final removedItem = _cartItems[itemIndex];
 
-      Get.snackbar(
-        'Berhasil',
-        'Item dihapus dari keranjang',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
-      );
+      // 2. Optimistic Update - Langsung hapus dari UI
+      _cartItems.removeAt(itemIndex);
+
+      // 3. API Call
+      try {
+        await ApiService.removeFromCart(cartItemId);
+
+        Get.snackbar(
+          'Berhasil',
+          'Item dihapus dari keranjang',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.green,
+          colorText: AppColors.white,
+          duration: const Duration(seconds: 2),
+        );
+      } catch (e) {
+        print('Remove from cart error: $e');
+
+        // Rollback - Kembalikan item
+        _cartItems.insert(itemIndex, removedItem);
+
+        Get.snackbar(
+          'Error',
+          'Gagal menghapus item',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.red,
+          colorText: AppColors.white,
+        );
+      }
     } catch (e) {
-      print('Remove from cart error: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal menghapus item',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
-      );
+      print('Remove error: $e');
+    }
+  }
+
+  // Debounce helper method
+  void _debounceApiCall(int productId, Function() callback) {
+    if (_debounceTimers[productId] != null) {
+      _debounceTimers[productId]!.cancel();
+    }
+
+    _debounceTimers[productId] = Timer(const Duration(milliseconds: 600), () {
+      callback();
+      _debounceTimers.remove(productId);
+    });
+  }
+
+  // Rollback optimistic update
+  void _rollbackCartItem(int productId, int tempId) {
+    final index = _cartItems.indexWhere((item) => item.productId == productId);
+
+    if (index >= 0) {
+      final item = _cartItems[index];
+
+      // Jika ini adalah item baru dengan temp ID, hapus
+      if (item.id == tempId) {
+        _cartItems.removeAt(index);
+      } else {
+        // Jika ini adalah update quantity, reload dari server
+        loadCartItems();
+      }
     }
   }
 
