@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:selforder/controllers/order_controller.dart';
 import 'package:selforder/models/cartitem_model.dart';
+import 'package:selforder/models/order_model.dart';
 import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/controllers/auth_controller.dart';
@@ -323,7 +324,7 @@ class CartController extends GetxController {
     return calculateSubtotal() + calculatePaymentFee();
   }
 
-  Future<Map<String, dynamic>> createOrder(String tableNumber) async {
+  Future<Order> createOrder(String tableNumber) async {
     if (!_authController.isLoggedIn) {
       throw Exception('Please login first');
     }
@@ -333,20 +334,18 @@ class CartController extends GetxController {
     }
 
     try {
-      final result = await ApiService.createOrderWithPayment(
+      final order = await ApiService.createOrderWithPayment(
         tableNumber: tableNumber,
         paymentMethod: _selectedPaymentMethod.value!.paymentMethod,
       );
 
-      // Clear cart after successful order
-      await ApiService.clearCart();
       _cartItems.clear();
       _selectedPaymentMethod.value = null;
       _paymentMethods.clear();
 
       await Get.find<OrderController>().refresh();
 
-      return result;
+      return order;
     } catch (e) {
       print('Create order error: $e');
       rethrow;

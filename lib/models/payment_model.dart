@@ -52,10 +52,24 @@ class Payment {
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) {
+        try {
+          return double.parse(value);
+        } catch (e) {
+          return 0.0;
+        }
+      }
+      return 0.0;
+    }
+
     return Payment(
       id: json['id'] ?? 0,
       reference: (json['reference'] ?? '').toString(),
-      totalHarga: (json['total_harga'] ?? 0).toDouble(),
+      totalHarga: _toDouble(json['total_harga']),
       status: PaymentStatusExtension.fromString(json['status'] ?? ''),
       metodePembayaran: (json['metode_pembayaran'] ?? '').toString(),
       paymentUrl: (json['paymenturl'] ?? json['payment_url'] ?? '').toString(),

@@ -4,6 +4,7 @@ import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/controllers/cart_controller.dart';
 import 'package:selforder/controllers/product_controller.dart';
 import 'package:selforder/models/cartitem_model.dart';
+import 'package:selforder/models/order_model.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/routes/app_routes.dart';
@@ -490,10 +491,10 @@ class CartPage extends StatelessWidget {
     );
 
     try {
-      final result = await controller.createOrder(tableNumber.trim());
+      final order = await controller.createOrder(tableNumber.trim());
       Get.back(); // Close loading dialog
 
-      _showPaymentDialog(result);
+      _showPaymentDialog(order);
     } catch (e) {
       Get.back(); // Close loading dialog
       Get.snackbar(
@@ -506,9 +507,8 @@ class CartPage extends StatelessWidget {
     }
   }
 
-  void _showPaymentDialog(Map<String, dynamic> orderResult) {
-    final orderData = orderResult['data'];
-    final paymentUrl = orderData['payment_url'];
+  void _showPaymentDialog(Order order) {
+    final paymentUrl = order.payment?.paymentUrl ?? '';
 
     Get.dialog(
       AlertDialog(
@@ -519,13 +519,11 @@ class CartPage extends StatelessWidget {
           children: [
             const Text('Pesanan Anda telah berhasil dibuat.'),
             const SizedBox(height: 16),
-            Text('Invoice: ${orderData['nomor_invoice']}'),
-            Text(
-              'Total: Rp ${_formatCurrency((orderData['total_harga'] ?? 0).toInt())}',
-            ),
-            Text('Meja: ${orderData['nomor_meja']}'),
-            if (orderData['payment'] != null)
-              Text('Pembayaran: ${orderData['payment']['metode_pembayaran']}'),
+            Text('Invoice: ${order.nomorInvoice}'),
+            Text('Total: Rp ${_formatCurrency(order.totalHarga.toInt())}'),
+            Text('Meja: ${order.nomorMeja}'),
+            if (order.payment != null)
+              Text('Pembayaran: ${order.payment!.metodePembayaran}'),
             const SizedBox(height: 16),
             const Text(
               'Anda akan diarahkan ke halaman pembayaran Duitku.',
@@ -538,7 +536,9 @@ class CartPage extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Get.back();
-              _openPaymentUrl(paymentUrl);
+              if (paymentUrl.isNotEmpty) {
+                _openPaymentUrl(paymentUrl);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,

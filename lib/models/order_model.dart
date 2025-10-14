@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:selforder/models/member_model.dart';
 import 'package:selforder/models/payment_model.dart';
 import 'package:selforder/models/orderitem_model.dart';
 import 'package:selforder/theme/app_theme.dart';
@@ -64,7 +63,6 @@ class Order {
   final String nomorInvoice;
   final String nomorMeja;
   final DateTime created;
-  final Member? member;
   final Payment? payment;
   final List<OrderItem> orderItems;
 
@@ -77,7 +75,6 @@ class Order {
     required this.nomorInvoice,
     required this.nomorMeja,
     required this.created,
-    this.member,
     this.payment,
     this.orderItems = const [],
   });
@@ -93,19 +90,31 @@ class Order {
       }
     }
 
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) {
+        try {
+          return double.parse(value);
+        } catch (e) {
+          return 0.0;
+        }
+      }
+      return 0.0;
+    }
+
     return Order(
-      id: json['id'],
-      totalHarga: (json['total_harga'] ?? 0).toDouble(),
-      totalHargaBarang: (json['total_harga_barang'] ?? 0)
-          .toDouble(),
-      paymentFee: (json['payment_fee'] ?? 0).toDouble(),
+      id: json['id'] ?? 0,
+      totalHarga: _toDouble(json['total_harga']),
+      totalHargaBarang: _toDouble(json['total_harga_barang']),
+      paymentFee: _toDouble(json['payment_fee']),
       status: OrderStatusExtension.fromString(
         (json['status'] ?? '').toString(),
       ),
       nomorInvoice: (json['nomor_invoice'] ?? '').toString(),
       nomorMeja: (json['nomor_meja'] ?? '').toString(),
       created: DateTime.tryParse(json['created'] ?? '') ?? DateTime.now(),
-      member: null,
       payment: json['payment'] != null
           ? Payment.fromJson(json['payment'])
           : null,

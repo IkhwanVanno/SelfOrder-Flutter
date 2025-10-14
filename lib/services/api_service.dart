@@ -227,7 +227,7 @@ class ApiService {
   }
 
   // UPDATED: Create Order with Duitku Payment
-  static Future<Map<String, dynamic>> createOrderWithPayment({
+  static Future<Order> createOrderWithPayment({
     required String tableNumber,
     required String paymentMethod,
   }) async {
@@ -248,8 +248,8 @@ class ApiService {
 
     if (response.statusCode == 201) {
       final jsonData = jsonDecode(response.body);
-      if (jsonData['success'] == true) {
-        return jsonData;
+      if (jsonData['success'] == true && jsonData['data'] != null) {
+        return Order.fromJson(jsonData['data']);
       } else {
         throw Exception(jsonData['error'] ?? 'Failed to create order');
       }
