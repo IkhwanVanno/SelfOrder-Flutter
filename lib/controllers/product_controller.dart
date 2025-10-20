@@ -1,43 +1,85 @@
 import 'package:get/get.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/models/category_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/theme/app_theme.dart';
 
+const _pageSize = 6; // Sesuai dengan limit di API
+
 class ProductController extends GetxController {
-  final _products = <Product>[].obs;
   final _categories = <CategoryProduct>[].obs;
-  final _filteredProducts = <Product>[].obs;
   final _selectedCategoryId = Rx<int?>(null);
-  final _isLoading = false.obs;
+  final _selectedFilter = Rx<String?>(null);
   final _guestCartQuantities = <int, int>{}.obs;
 
-  List<Product> get products => _products;
+  // Pagination controller
+  final PagingController<int, Product> pagingController = PagingController(
+    firstPageKey: 1,
+  );
+
   List<CategoryProduct> get categories => _categories;
-  List<Product> get filteredProducts => _filteredProducts;
   int? get selectedCategoryId => _selectedCategoryId.value;
-  bool get isLoading => _isLoading.value;
+  String? get selectedFilter => _selectedFilter.value;
   Map<int, int> get guestCartQuantities => _guestCartQuantities;
+
+  set selectedFilter(String? value) {
+    _selectedFilter.value = value;
+    resetPagination();
+  }
 
   @override
   void onInit() {
     super.onInit();
-    loadProducts();
+    loadCategories();
+    setupPagingController();
+  }
+
+  void setupPagingController() {
+    pagingController.addPageRequestListener((pageKey) {
+      _fetchProductPage(pageKey);
+    });
+  }
+
+  Future<void> loadCategories() async {
+    try {
+      final categories = await ApiService.fetchCategories();
+      _categories.value = categories;
+    } catch (e) {
+      print('Failed to load categories: $e');
+      Get.snackbar(
+        'Error',
+        'Gagal memuat kategori',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.red,
+        colorText: AppColors.white,
+      );
+    }
   }
 
   Future<void> loadProducts() async {
-    if (_products.isNotEmpty) return; // Jangan load ulang jika sudah ada
+    resetPagination();
+  }
 
-    _isLoading.value = true;
+  Future<void> _fetchProductPage(int pageKey) async {
     try {
-      final categories = await ApiService.fetchCategories();
-      final products = await ApiService.fetchProducts();
+      final newProducts = await ApiService.fetchProducts(
+        categoryId: _selectedCategoryId.value,
+        filter: _selectedFilter.value,
+        page: pageKey,
+        limit: _pageSize,
+      );
 
-      _categories.value = categories;
-      _products.value = products;
-      _filterProducts();
-    } catch (e) {
-      print('Failed to load products: $e');
+      final isLastPage = newProducts.length < _pageSize;
+
+      if (isLastPage) {
+        pagingController.appendLastPage(newProducts);
+      } else {
+        final nextPageKey = pageKey + 1;
+        pagingController.appendPage(newProducts, nextPageKey);
+      }
+    } catch (error) {
+      pagingController.error = error;
       Get.snackbar(
         'Error',
         'Gagal memuat produk',
@@ -45,35 +87,28 @@ class ProductController extends GetxController {
         backgroundColor: AppColors.red,
         colorText: AppColors.white,
       );
-    } finally {
-      _isLoading.value = false;
     }
   }
 
   void selectCategory(int? categoryId) {
     _selectedCategoryId.value = categoryId;
-    _filterProducts();
+    resetPagination();
   }
 
-  void _filterProducts() {
-    if (_selectedCategoryId.value == null) {
-      _filteredProducts.value = _products;
-    } else {
-      _filteredProducts.value = _products
-          .where((product) => product.categoryId == _selectedCategoryId.value)
-          .toList();
-    }
+  void resetPagination() {
+    pagingController.refresh();
   }
 
   Product? getProductById(int productId) {
     try {
-      return _products.firstWhere((p) => p.id == productId);
+      final allProducts = pagingController.itemList ?? [];
+      return allProducts.firstWhere((p) => p.id == productId);
     } catch (e) {
       return null;
     }
   }
 
-  // Guest cart management (untuk user yang belum login)
+  // Guest cart management
   void updateGuestCart(int productId, int quantity) {
     if (quantity <= 0) {
       _guestCartQuantities.remove(productId);
@@ -90,9 +125,14 @@ class ProductController extends GetxController {
     _guestCartQuantities.clear();
   }
 
-  // Force refresh (hanya dipanggil saat pull-to-refresh)
   Future<void> refresh() async {
-    _products.clear();
-    await loadProducts();
+    loadCategories();
+    resetPagination();
+  }
+
+  @override
+  void onClose() {
+    pagingController.dispose();
+    super.onClose();
   }
 }

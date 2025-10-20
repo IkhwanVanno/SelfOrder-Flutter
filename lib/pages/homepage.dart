@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/controllers/product_controller.dart';
 import 'package:selforder/controllers/cart_controller.dart';
@@ -22,51 +23,43 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       body: Obx(() {
-        return RefreshIndicator(
-          onRefresh: () async {
-            await productController.refresh();
-            if (authController.isLoggedIn) {
-              await cartController.refresh();
-            }
-          },
-          child: Column(
-            children: [
-              // Login Warning Banner
-              if (!authController.isLoggedIn)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: AppColors.secondary,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info, color: AppColors.yellow),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Anda belum masuk, silahkan masuk untuk order pesanan',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.white,
-                          ),
-                        ),
+        return Column(
+          children: [
+            // Login Warning Banner
+            if (!authController.isLoggedIn)
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: AppColors.secondary,
+                child: Row(
+                  children: [
+                    const Icon(Icons.info, color: AppColors.yellow),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Anda belum masuk, silahkan masuk untuk order pesanan',
+                        style: TextStyle(fontSize: 12, color: AppColors.white),
                       ),
-                    ],
-                  ),
-                ),
-
-              // Categories Section
-              _buildCategoriesSection(productController),
-
-              // Products Section
-              Expanded(
-                child: _buildProductsSection(
-                  productController,
-                  cartController,
-                  authController,
-                  crossAxisCount,
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+
+            // Categories Section
+            _buildCategoriesSection(productController),
+
+            // Filter Bar
+            _buildFilterBar(productController),
+
+            // Products with Infinite Scroll Pagination
+            Expanded(
+              child: _buildPaginatedProducts(
+                productController,
+                cartController,
+                authController,
+                crossAxisCount,
+              ),
+            ),
+          ],
         );
       }),
     );
@@ -168,102 +161,165 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildProductsSection(
+  Widget _buildFilterBar(ProductController controller) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: AppColors.white,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Urutkan:', style: TextStyle(fontWeight: FontWeight.bold)),
+          Obx(() {
+            return DropdownButton<String?>(
+              value: controller.selectedFilter,
+              hint: const Text("Pilih filter"),
+              items: const [
+                DropdownMenuItem(
+                  value: 'harga_terendah',
+                  child: Text('Harga Terendah'),
+                ),
+                DropdownMenuItem(
+                  value: 'harga_tertinggi',
+                  child: Text('Harga Tertinggi'),
+                ),
+                DropdownMenuItem(value: 'populer', child: Text('Populer')),
+              ],
+              onChanged: (value) {
+                controller.selectedFilter = value;
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginatedProducts(
     ProductController productController,
     CartController cartController,
     AuthController authController,
     int crossAxisCount,
   ) {
-    return Obx(() {
-      if (productController.isLoading) {
-        return const Center(child: CircularProgressIndicator());
-      }
+    return PagedGridView<int, Product>(
+      pagingController: productController.pagingController,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.65,
+      ),
+      padding: const EdgeInsets.all(12),
+      builderDelegate: PagedChildBuilderDelegate<Product>(
+        itemBuilder: (context, product, index) {
+          return Obx(() {
+            final cartQuantity = authController.isLoggedIn
+                ? cartController.getCartQuantity(product.id)
+                : productController.getGuestCartQuantity(product.id);
 
-      if (productController.filteredProducts.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.inventory_2_outlined, size: 80, color: AppColors.grey),
-              const SizedBox(height: 16),
-              Text(
-                productController.selectedCategoryId == null
-                    ? 'Produk tidak ada'
-                    : 'Produk tidak ada dalam kategori ini',
-                style: TextStyle(fontSize: 16, color: AppColors.grey),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => productController.refresh(),
-                child: const Text('Refresh'),
-              ),
-            ],
-          ),
-        );
-      }
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: GridView.builder(
-          itemCount: productController.filteredProducts.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.65,
-          ),
-          itemBuilder: (context, index) {
-            final product = productController.filteredProducts[index];
-
-            return Obx(() {
-              final cartQuantity = authController.isLoggedIn
-                  ? cartController.getCartQuantity(product.id)
-                  : productController.getGuestCartQuantity(product.id);
-
-              return _ProductCard(
-                product: product,
-                cartQuantity: cartQuantity,
-                isLoggedIn: authController.isLoggedIn,
-                onAddToCart: () async {
-                  if (authController.isLoggedIn) {
-                    await cartController.addToCart(product.id, 1);
-                  } else {
-                    productController.updateGuestCart(
-                      product.id,
-                      cartQuantity + 1,
+            return _ProductCard(
+              product: product,
+              cartQuantity: cartQuantity,
+              isLoggedIn: authController.isLoggedIn,
+              onAddToCart: () async {
+                if (authController.isLoggedIn) {
+                  await cartController.addToCart(product.id, 1);
+                } else {
+                  productController.updateGuestCart(
+                    product.id,
+                    cartQuantity + 1,
+                  );
+                  Get.snackbar(
+                    'Info',
+                    'Silahkan masuk terlebih dahulu',
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: AppColors.orange,
+                    colorText: AppColors.white,
+                  );
+                }
+              },
+              onUpdateQuantity: (quantity) async {
+                if (authController.isLoggedIn) {
+                  if (quantity <= 0) {
+                    final item = cartController.cartItems.firstWhere(
+                      (item) => item.productId == product.id,
                     );
-                    Get.snackbar(
-                      'Info',
-                      'Silahkan masuk terlebih dahulu',
-                      snackPosition: SnackPosition.TOP,
-                      backgroundColor: AppColors.orange,
-                      colorText: AppColors.white,
-                    );
-                  }
-                },
-                onUpdateQuantity: (quantity) async {
-                  if (authController.isLoggedIn) {
-                    if (quantity <= 0) {
-                      final item = cartController.cartItems.firstWhere(
-                        (item) => item.productId == product.id,
-                      );
-                      await cartController.removeFromCart(item.id);
-                    } else {
-                      final item = cartController.cartItems.firstWhere(
-                        (item) => item.productId == product.id,
-                      );
-                      await cartController.updateQuantity(item.id, quantity);
-                    }
+                    await cartController.removeFromCart(item.id);
                   } else {
-                    productController.updateGuestCart(product.id, quantity);
+                    final item = cartController.cartItems.firstWhere(
+                      (item) => item.productId == product.id,
+                    );
+                    await cartController.updateQuantity(item.id, quantity);
                   }
-                },
-              );
-            });
-          },
-        ),
-      );
-    });
+                } else {
+                  productController.updateGuestCart(product.id, quantity);
+                }
+              },
+            );
+          });
+        },
+        noItemsFoundIndicatorBuilder: (context) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 80,
+                  color: AppColors.grey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  productController.selectedCategoryId == null
+                      ? 'Produk tidak ada'
+                      : 'Produk tidak ada dalam kategori ini',
+                  style: TextStyle(fontSize: 16, color: AppColors.grey),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => productController.refresh(),
+                  child: const Text('Refresh'),
+                ),
+              ],
+            ),
+          );
+        },
+        firstPageErrorIndicatorBuilder: (context) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 80, color: AppColors.red),
+                const SizedBox(height: 16),
+                const Text('Gagal memuat produk'),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => productController.pagingController.refresh(),
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          );
+        },
+        newPageErrorIndicatorBuilder: (context) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 60, color: AppColors.red),
+                const SizedBox(height: 8),
+                const Text('Gagal memuat halaman berikutnya'),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => productController.pagingController
+                      .retryLastFailedRequest(),
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

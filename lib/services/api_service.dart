@@ -12,6 +12,7 @@ import 'session_manager.dart';
 
 class ApiService {
   static final String _baseUrl = AppConfig.baseUrl;
+
   static void _handleResponse(http.Response response) {
     SessionManager.updateSessionFromResponse(response);
 
@@ -56,12 +57,23 @@ class ApiService {
     }
   }
 
-  // Products
-  static Future<List<Product>> fetchProducts() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/products'),
-      headers: SessionManager.getHeaders(),
+  // Products dengan pagination support
+  static Future<List<Product>> fetchProducts({
+    int? categoryId,
+    String? filter,
+    int page = 1,
+    int limit = 6,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/products').replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        if (categoryId != null) 'category_id': categoryId.toString(),
+        if (filter != null) 'filter': filter,
+      },
     );
+
+    final response = await http.get(uri, headers: SessionManager.getHeaders());
 
     _handleResponse(response);
 
@@ -131,10 +143,7 @@ class ApiService {
     final response = await http.post(
       Uri.parse('$_baseUrl/cart'),
       headers: SessionManager.getHeaders(),
-      body: jsonEncode({
-        'produk_id': productId,
-        'kuantitas': quantity,
-      }), // Key berubah
+      body: jsonEncode({'produk_id': productId, 'kuantitas': quantity}),
     );
 
     _handleResponse(response);
@@ -226,7 +235,7 @@ class ApiService {
     }
   }
 
-  // UPDATED: Create Order with Duitku Payment
+  // Create Order with Duitku Payment
   static Future<Order> createOrderWithPayment({
     required String tableNumber,
     required String paymentMethod,

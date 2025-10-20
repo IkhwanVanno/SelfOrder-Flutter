@@ -160,7 +160,7 @@ class AuthController extends GetxController {
   Future<void> _loadUserData() async {
     try {
       if (Get.isRegistered<ProductController>()) {
-        await Get.find<ProductController>().loadProducts();
+        await Get.find<ProductController>().refresh();
       }
 
       if (Get.isRegistered<CartController>()) {
