@@ -70,6 +70,7 @@ class ProductController extends GetxController {
         limit: _pageSize,
       );
 
+      if (isClosed) return;
       final isLastPage = newProducts.length < _pageSize;
 
       if (isLastPage) {
@@ -79,7 +80,10 @@ class ProductController extends GetxController {
         pagingController.appendPage(newProducts, nextPageKey);
       }
     } catch (error) {
-      pagingController.error = error;
+      if (!isClosed) {
+        pagingController.error = error;
+      }
+
       Get.snackbar(
         'Error',
         'Gagal memuat produk',

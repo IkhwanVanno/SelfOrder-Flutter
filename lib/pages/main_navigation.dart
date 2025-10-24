@@ -6,6 +6,7 @@ import 'package:selforder/pages/homepage.dart';
 import 'package:selforder/pages/cartpage.dart';
 import 'package:selforder/pages/orderpage.dart';
 import 'package:selforder/pages/profilepage.dart';
+import 'package:selforder/pages/reservationpage.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
 
@@ -23,6 +24,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const HomePage(),
     const CartPage(),
     const OrderPage(),
+    const ReservationPage(),
     const ProfilePage(),
   ];
 
@@ -69,10 +71,7 @@ class _MainNavigationState extends State<MainNavigation> {
           }
           return Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Image.asset(
-              "assets/images/cafe.png",
-              fit: BoxFit.contain,
-            ),
+            child: Image.asset("assets/images/cafe.png", fit: BoxFit.contain),
           );
         }),
         title: Obx(() {
@@ -89,7 +88,8 @@ class _MainNavigationState extends State<MainNavigation> {
         backgroundColor: AppColors.primary,
         actions: [
           Obx(() {
-            if (authController.isLoggedIn && authController.currentUser != null) {
+            if (authController.isLoggedIn &&
+                authController.currentUser != null) {
               return Padding(
                 padding: const EdgeInsets.only(right: 16),
                 child: Center(
@@ -130,6 +130,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long),
             label: 'Pesanan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Reservasi',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],

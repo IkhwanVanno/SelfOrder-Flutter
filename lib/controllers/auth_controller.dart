@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:selforder/controllers/reservation_controller.dart';
 import 'package:selforder/models/member_model.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/controllers/product_controller.dart';
@@ -169,6 +170,10 @@ class AuthController extends GetxController {
 
       if (Get.isRegistered<OrderController>()) {
         await Get.find<OrderController>().loadOrders();
+      }
+
+      if (Get.isRegistered<ReservationController>()) {
+        await Get.find<ReservationController>().loadReservations();
       }
     } catch (e) {
       print('Error loading user data: $e');

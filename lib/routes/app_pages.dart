@@ -8,6 +8,7 @@ import 'package:selforder/controllers/product_controller.dart';
 import 'package:selforder/controllers/cart_controller.dart';
 import 'package:selforder/controllers/order_controller.dart';
 import 'package:selforder/controllers/siteconfig_controller.dart';
+import 'package:selforder/controllers/reservation_controller.dart';
 import 'app_routes.dart';
 
 class AppPages {
@@ -15,18 +16,10 @@ class AppPages {
     GetPage(
       name: AppRoutes.MAIN,
       page: () => const MainNavigation(),
-      bindings: [
-        MainBinding(),
-      ],
+      bindings: [MainBinding()],
     ),
-    GetPage(
-      name: AppRoutes.LOGIN,
-      page: () => const LoginPage(),
-    ),
-    GetPage(
-      name: AppRoutes.REGISTER,
-      page: () => const RegisterPage(),
-    ),
+    GetPage(name: AppRoutes.LOGIN, page: () => const LoginPage()),
+    GetPage(name: AppRoutes.REGISTER, page: () => const RegisterPage()),
     GetPage(
       name: AppRoutes.FORGOT_PASSWORD,
       page: () => const ForgotPasswordPage(),
@@ -38,10 +31,11 @@ class AppPages {
 class MainBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<SiteConfigController>(() => SiteConfigController());
-    Get.lazyPut<AuthController>(() => AuthController());
-    Get.lazyPut<ProductController>(() => ProductController());
-    Get.lazyPut<CartController>(() => CartController());
-    Get.lazyPut<OrderController>(() => OrderController());
+    Get.put<SiteConfigController>(SiteConfigController(), permanent: true);
+    Get.put<AuthController>(AuthController(), permanent: true);
+    Get.put<ProductController>(ProductController(), permanent: true);
+    Get.put<CartController>(CartController(), permanent: true);
+    Get.put<OrderController>(OrderController(), permanent: true);
+    Get.put<ReservationController>(ReservationController(), permanent: true);
   }
 }
