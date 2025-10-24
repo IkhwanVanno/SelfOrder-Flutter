@@ -45,7 +45,7 @@ class ReservationPage extends StatelessWidget {
       floatingActionButton: Obx(() {
         if (!authController.isLoggedIn) return const SizedBox.shrink();
         return FloatingActionButton.extended(
-          onPressed: () => reservationController.showCreateReservationDialog(),
+          onPressed: () => reservationController.showCreateReservationDialog(Get.context!),
           backgroundColor: AppColors.primary,
           icon: const Icon(Icons.add),
           label: const Text('Buat Reservasi'),
