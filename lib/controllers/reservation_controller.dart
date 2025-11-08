@@ -378,16 +378,6 @@ class ReservationController extends GetxController {
     final estimatedTotal = 0.0.obs;
     final isProcessing = false.obs;
 
-    void disposeControllers() {
-      try {
-        namaController.dispose();
-        kursiController.dispose();
-        catatanController.dispose();
-      } catch (e) {
-        print('Error disposing controllers: $e');
-      }
-    }
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -712,12 +702,8 @@ class ReservationController extends GetxController {
           ],
         );
       },
-    ).then((_) {
-      Future.delayed(const Duration(milliseconds: 120), () {
-        FocusScope.of(context).unfocus();
-        disposeControllers();
-        debugPrint('Dialog ditutup & controllers disposed');
-      });
+    ).whenComplete(() {
+      FocusScope.of(context).unfocus();
     });
   }
 
