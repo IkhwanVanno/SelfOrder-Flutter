@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:selforder/config/app_config.dart';
@@ -69,6 +71,16 @@ class AuthService {
         final cookie = response.headers['set-cookie'];
         await SessionManager.saveSession(data['user'], cookie);
 
+        try {
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            print('🔔 Mengirim FCM token setelah login...');
+            await sendFcmTokenToServer(fcmToken);
+          }
+        } catch (e) {
+          print('Warning: Failed to send FCM token: $e');
+        }
+
         _notifyAllAuthStateListeners();
         return true;
       } else {
@@ -118,6 +130,16 @@ class AuthService {
 
         final cookie = response.headers['set-cookie'];
         await SessionManager.saveSession(data['user'], cookie);
+
+        try {
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            print('🔔 Mengirim FCM token setelah Google login...');
+            await sendFcmTokenToServer(fcmToken);
+          }
+        } catch (e) {
+          print('Warning: Failed to send FCM token: $e');
+        }
 
         _notifyAllAuthStateListeners();
         return true;
@@ -178,6 +200,16 @@ class AuthService {
         _currentUser = Member.fromJson(data['data']);
 
         await SessionManager.updateUserData(data['data']);
+
+        try {
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            await sendFcmTokenToServer(fcmToken);
+          }
+        } catch (e) {
+          print('Warning: Failed to send FCM token: $e');
+        }
+
         _notifyAllAuthStateListeners();
         return _currentUser;
       } else if (response.statusCode == 401) {
@@ -319,6 +351,50 @@ class AuthService {
         'success': false,
         'message': 'Terjadi kesalahan koneksi. Silakan coba lagi.',
       };
+    }
+  }
+
+  static Future<bool> sendFcmTokenToServer(String token) async {
+    if (!SessionManager.isLoggedIn) {
+      print('User not logged in, skipping FCM token send');
+      return false;
+    }
+
+    try {
+      final url = Uri.parse('${AppConfig.baseUrl}/fcm-token');
+
+      // Get device info
+      String deviceName = 'Unknown Device';
+      try {
+        // Bisa ditambahkan package device_info_plus untuk info lebih detail
+        if (Platform.isAndroid) {
+          deviceName = 'Android Device';
+        } else if (Platform.isIOS) {
+          deviceName = 'iOS Device';
+        }
+      } catch (e) {
+        print('Error getting device info: $e');
+      }
+
+      final response = await http.post(
+        url,
+        headers: SessionManager.getHeaders(),
+        body: jsonEncode({'token': token, 'device_name': deviceName}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ FCM token berhasil dikirim ke server');
+        final data = jsonDecode(response.body);
+        print('Server response: ${data['message']}');
+        return true;
+      } else {
+        print('❌ Gagal kirim FCM token: ${response.statusCode}');
+        print('Response: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error kirim FCM token: $e');
+      return false;
     }
   }
 }

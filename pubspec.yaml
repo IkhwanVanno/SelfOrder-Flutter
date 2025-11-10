@@ -24,6 +24,7 @@ dependencies:
   path_provider: ^2.1.5 # Akses Directory Device
   firebase_core: ^4.1.1 # firebase core
   firebase_auth: ^6.1.0 # firebase auth
+  firebase_messaging: ^16.0.4 # firebase messaging
 
   
 dev_dependencies:

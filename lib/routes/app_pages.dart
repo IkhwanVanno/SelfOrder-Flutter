@@ -24,6 +24,11 @@ class AppPages {
       name: AppRoutes.FORGOT_PASSWORD,
       page: () => const ForgotPasswordPage(),
     ),
+    GetPage(
+      name: '${AppRoutes.MAIN}/reservation',
+      page: () => const MainNavigation(initialIndex: 3),
+      bindings: [MainBinding()],
+    ),
   ];
 }
 
