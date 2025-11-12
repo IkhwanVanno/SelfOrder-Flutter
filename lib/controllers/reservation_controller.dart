@@ -378,333 +378,285 @@ class ReservationController extends GetxController {
     final estimatedTotal = 0.0.obs;
     final isProcessing = false.obs;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          title: const Text('Buat Reservasi Baru'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Info biaya
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.blue.withAlpha(25),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.blue.withAlpha(51)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        color: AppColors.blue,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Biaya reservasi: ${NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0).format(biayaPerJam)}/jam',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.blue,
-                            fontWeight: FontWeight.w500,
-                          ),
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Buat Reservasi Baru'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Info biaya
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.blue.withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.blue.withAlpha(51)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: AppColors.blue,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Biaya reservasi: ${NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0).format(biayaPerJam)}/jam',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.blue,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Nama Reservasi
-                TextField(
-                  controller: namaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Reservasi *',
-                    hintText: 'Contoh: Reservasi Ulang Tahun',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Jumlah Kursi
-                TextField(
-                  controller: kursiController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Jumlah Kursi *',
-                    hintText: 'Masukkan jumlah kursi',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Waktu Mulai
-                Obx(
-                  () => ListTile(
-                    title: const Text('Waktu Mulai *'),
-                    subtitle: Text(
-                      waktuMulai.value != null
-                          ? DateFormat(
-                              'dd MMM yyyy, HH:mm',
-                            ).format(waktuMulai.value!)
-                          : 'Pilih waktu mulai',
                     ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      // tutup keyboard dulu menggunakan dialogCtx
-                      FocusScope.of(dialogCtx).unfocus();
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
-                      // beri sedikit waktu agar IME benar-benar tertutup
-                      await Future.delayed(const Duration(milliseconds: 120));
+              // Nama Reservasi
+              TextField(
+                controller: namaController,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Reservasi *',
+                  hintText: 'Contoh: Reservasi Ulang Tahun',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
 
-                      final date = await showDatePicker(
-                        context: dialogCtx,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
+              // Jumlah Kursi
+              TextField(
+                controller: kursiController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Jumlah Kursi *',
+                  hintText: 'Masukkan jumlah kursi',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Waktu Mulai
+              Obx(
+                () => ListTile(
+                  title: const Text('Waktu Mulai *'),
+                  subtitle: Text(
+                    waktuMulai.value != null
+                        ? DateFormat(
+                            'dd MMM yyyy, HH:mm',
+                          ).format(waktuMulai.value!)
+                        : 'Pilih waktu mulai',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: Get.context!,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      final time = await showTimePicker(
+                        context: Get.context!,
+                        initialTime: TimeOfDay.now(),
                       );
-                      if (date != null) {
-                        final time = await showTimePicker(
-                          context: dialogCtx,
-                          initialTime: TimeOfDay.now(),
+                      if (time != null) {
+                        waktuMulai.value = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
                         );
-                        if (time != null) {
-                          waktuMulai.value = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
 
-                          if (waktuSelesai.value != null) {
-                            estimatedTotal.value = calculateEstimatedTotal(
-                              waktuMulai.value!,
-                              waktuSelesai.value!,
-                            );
-                          }
+                        if (waktuSelesai.value != null) {
+                          estimatedTotal.value = calculateEstimatedTotal(
+                            waktuMulai.value!,
+                            waktuSelesai.value!,
+                          );
                         }
                       }
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: AppColors.grey),
-                    ),
+                    }
+                  },
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: AppColors.grey),
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-                // Waktu Selesai
-                Obx(
-                  () => ListTile(
-                    title: const Text('Waktu Selesai *'),
-                    subtitle: Text(
-                      waktuSelesai.value != null
-                          ? DateFormat(
-                              'dd MMM yyyy, HH:mm',
-                            ).format(waktuSelesai.value!)
-                          : 'Pilih waktu selesai',
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      FocusScope.of(dialogCtx).unfocus();
-                      await Future.delayed(const Duration(milliseconds: 120));
-
-                      final date = await showDatePicker(
-                        context: dialogCtx,
-                        initialDate: waktuMulai.value ?? DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
+              // Waktu Selesai
+              Obx(
+                () => ListTile(
+                  title: const Text('Waktu Selesai *'),
+                  subtitle: Text(
+                    waktuSelesai.value != null
+                        ? DateFormat(
+                            'dd MMM yyyy, HH:mm',
+                          ).format(waktuSelesai.value!)
+                        : 'Pilih waktu selesai',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: Get.context!,
+                      initialDate: waktuMulai.value ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      final time = await showTimePicker(
+                        context: Get.context!,
+                        initialTime: TimeOfDay.now(),
                       );
-                      if (date != null) {
-                        final time = await showTimePicker(
-                          context: dialogCtx,
-                          initialTime: TimeOfDay.now(),
+                      if (time != null) {
+                        waktuSelesai.value = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
                         );
-                        if (time != null) {
-                          waktuSelesai.value = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
 
-                          if (waktuMulai.value != null) {
-                            estimatedTotal.value = calculateEstimatedTotal(
-                              waktuMulai.value!,
-                              waktuSelesai.value!,
-                            );
-                          }
+                        if (waktuMulai.value != null) {
+                          estimatedTotal.value = calculateEstimatedTotal(
+                            waktuMulai.value!,
+                            waktuSelesai.value!,
+                          );
                         }
                       }
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: AppColors.grey),
-                    ),
+                    }
+                  },
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: AppColors.grey),
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-                // Estimasi Total
-                Obx(() {
-                  if (estimatedTotal.value > 0) {
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.blue.withAlpha(25),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calculate, color: AppColors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Estimasi Total: ${NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0).format(estimatedTotal.value)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.blue,
-                              ),
+              // Estimasi Total
+              Obx(() {
+                if (estimatedTotal.value > 0) {
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.blue.withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calculate, color: AppColors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Estimasi Total: ${NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0).format(estimatedTotal.value)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.blue,
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }),
-                const SizedBox(height: 16),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
+              const SizedBox(height: 16),
 
-                // Catatan
-                TextField(
-                  controller: catatanController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan (Opsional)',
-                    hintText: 'Tambahkan catatan khusus',
-                    border: OutlineInputBorder(),
-                  ),
+              // Catatan
+              TextField(
+                controller: catatanController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Catatan (Opsional)',
+                  hintText: 'Tambahkan catatan khusus',
+                  border: OutlineInputBorder(),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Obx(
+            () => TextButton(
+              onPressed: isProcessing.value ? null : () => Get.back(),
+              child: const Text('Batal'),
             ),
           ),
-          actions: [
-            Obx(
-              () => TextButton(
-                onPressed: isProcessing.value
-                    ? null
-                    : () {
-                        FocusScope.of(dialogCtx).unfocus();
-                        if (Navigator.canPop(dialogCtx)) {
-                          Navigator.of(dialogCtx, rootNavigator: true).pop();
-                        } else if (Get.isDialogOpen ?? false) {
-                          Get.back();
-                        }
-                      },
-                child: const Text('Batal'),
+          Obx(
+            () => ElevatedButton(
+              onPressed: isProcessing.value
+                  ? null
+                  : () async {
+                      if (namaController.text.isEmpty ||
+                          kursiController.text.isEmpty ||
+                          waktuMulai.value == null ||
+                          waktuSelesai.value == null) {
+                        Get.snackbar(
+                          'Error',
+                          'Mohon lengkapi semua field yang wajib diisi',
+                          backgroundColor: AppColors.red,
+                          colorText: AppColors.white,
+                        );
+                        return;
+                      }
+
+                      if (waktuSelesai.value!.isBefore(waktuMulai.value!)) {
+                        Get.snackbar(
+                          'Error',
+                          'Waktu selesai harus setelah waktu mulai',
+                          backgroundColor: AppColors.red,
+                          colorText: AppColors.white,
+                        );
+                        return;
+                      }
+
+                      isProcessing.value = true;
+
+                      final success = await createReservation(
+                        namaReservasi: namaController.text,
+                        jumlahKursi: int.parse(kursiController.text),
+                        waktuMulai: waktuMulai.value!,
+                        waktuSelesai: waktuSelesai.value!,
+                        catatan: catatanController.text.isNotEmpty
+                            ? catatanController.text
+                            : null,
+                      );
+
+                      isProcessing.value = false;
+
+                      if (success) {
+                        Get.back();
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
               ),
+              child: isProcessing.value
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.white,
+                        ),
+                      ),
+                    )
+                  : const Text('Simpan'),
             ),
-            Obx(
-              () => ElevatedButton(
-                onPressed: isProcessing.value
-                    ? null
-                    : () async {
-                        FocusScope.of(dialogCtx).unfocus();
-                        if (namaController.text.isEmpty ||
-                            kursiController.text.isEmpty ||
-                            waktuMulai.value == null ||
-                            waktuSelesai.value == null) {
-                          Get.snackbar(
-                            'Error',
-                            'Mohon lengkapi semua field yang wajib diisi',
-                            backgroundColor: AppColors.red,
-                            colorText: AppColors.white,
-                          );
-                          return;
-                        }
-
-                        if (waktuSelesai.value!.isBefore(waktuMulai.value!)) {
-                          Get.snackbar(
-                            'Error',
-                            'Waktu selesai harus setelah waktu mulai',
-                            backgroundColor: AppColors.red,
-                            colorText: AppColors.white,
-                          );
-                          return;
-                        }
-
-                        // mulai loading
-                        isProcessing.value = true;
-
-                        try {
-                          final success = await createReservation(
-                            namaReservasi: namaController.text,
-                            jumlahKursi: int.parse(kursiController.text),
-                            waktuMulai: waktuMulai.value!,
-                            waktuSelesai: waktuSelesai.value!,
-                            catatan: catatanController.text.isNotEmpty
-                                ? catatanController.text
-                                : null,
-                          );
-
-                          // stop loading dulu
-                          isProcessing.value = false;
-
-                          if (success) {
-                            // beri sedikit jeda agar UI settle (keyboard/snackbar)
-                            await Future.delayed(
-                              const Duration(milliseconds: 250),
-                            );
-
-                            // tutup dialog via Navigator (karena showDialog dipakai)
-                            if (Navigator.canPop(dialogCtx)) {
-                              Navigator.of(
-                                dialogCtx,
-                                rootNavigator: true,
-                              ).pop();
-                            } else if (Get.isDialogOpen ?? false) {
-                              Get.back();
-                            }
-                          } else {
-                            // gagal -> biarkan dialog tetap terbuka, loading false sudah dibuat
-                          }
-                        } catch (e) {
-                          isProcessing.value = false;
-                          debugPrint('Error creating reservation: $e');
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                ),
-                child: Obx(() {
-                  return isProcessing.value
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.white,
-                            ),
-                          ),
-                        )
-                      : const Text('Simpan');
-                }),
-              ),
-            ),
-          ],
-        );
-      },
-    ).whenComplete(() {
-      FocusScope.of(context).unfocus();
-    });
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
   }
 
   // Dialog untuk pembayaran
