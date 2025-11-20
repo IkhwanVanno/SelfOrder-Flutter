@@ -48,16 +48,16 @@ Future<void> setupFCM() async {
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     if (message.notification != null) {
-      Get.snackbar(
-        message.notification!.title ?? 'Notifikasi',
-        message.notification!.body ?? '',
-        snackPosition: SnackPosition.TOP,
-        duration: const Duration(seconds: 4),
-        backgroundColor: AppColors.primary,
-        colorText: AppColors.white,
-        icon: const Icon(Icons.notifications, color: AppColors.white),
-        margin: const EdgeInsets.all(10),
-      );
+      // Get.snackbar(
+      //   message.notification!.title ?? 'Notifikasi',
+      //   message.notification!.body ?? '',
+      //   snackPosition: SnackPosition.TOP,
+      //   duration: const Duration(seconds: 4),
+      //   backgroundColor: AppColors.primary,
+      //   colorText: AppColors.white,
+      //   icon: const Icon(Icons.notifications, color: AppColors.white),
+      //   margin: const EdgeInsets.all(10),
+      // );
       if (message.data['type'] == 'reservation') {
         Get.toNamed('${AppRoutes.MAIN}/reservation');
         Future.delayed(const Duration(milliseconds: 500), () {
