@@ -6,6 +6,7 @@ import 'package:selforder/controllers/product_controller.dart';
 import 'package:selforder/controllers/cart_controller.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -228,12 +229,15 @@ class HomePage extends StatelessWidget {
                     product.id,
                     cartQuantity + 1,
                   );
-                  Get.snackbar(
-                    'Info',
-                    'Silahkan masuk terlebih dahulu',
-                    snackPosition: SnackPosition.TOP,
-                    backgroundColor: AppColors.orange,
-                    colorText: AppColors.white,
+                  toastification.show(
+                    type: ToastificationType.info,
+                    style: ToastificationStyle.flatColored,
+                    title: Text('Info'),
+                    description: Text(
+                      'Masuk untuk menyimpan keranjang Anda secara permanen.',
+                    ),
+                    autoCloseDuration: const Duration(seconds: 2),
+                    alignment: Alignment.topCenter,
                   );
                 }
               },

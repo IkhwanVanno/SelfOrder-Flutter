@@ -7,6 +7,7 @@ import 'package:selforder/models/order_model.dart';
 import 'package:selforder/models/payment_model.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderPage extends StatelessWidget {
@@ -503,21 +504,23 @@ class OrderPage extends StatelessWidget {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        Get.snackbar(
-          'Error',
-          'Tidak dapat membuka halaman pembayaran',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          title: Text('Error'),
+          description: Text('Tidak dapat membuka tautan pembayaran.'),
+          autoCloseDuration: const Duration(seconds: 2),
+          alignment: Alignment.topCenter,
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Terjadi kesalahan saat membuka tautan pembayaran.'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }

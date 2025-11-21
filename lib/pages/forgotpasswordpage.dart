@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/controllers/siteconfig_controller.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 class ForgotPasswordPage extends StatelessWidget {
   const ForgotPasswordPage({super.key});
@@ -11,13 +12,16 @@ class ForgotPasswordPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
     final siteConfigController = Get.find<SiteConfigController>();
-    
+
     final formKey = GlobalKey<FormState>();
     final emailController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lupa Kata Sandi', style: TextStyle(color: AppColors.white)),
+        title: const Text(
+          'Lupa Kata Sandi',
+          style: TextStyle(color: AppColors.white),
+        ),
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
@@ -35,7 +39,8 @@ class ForgotPasswordPage extends StatelessWidget {
                     // Logo
                     Obx(() {
                       final siteConfig = siteConfigController.siteConfig;
-                      if (siteConfig != null && siteConfig.imageURL.isNotEmpty) {
+                      if (siteConfig != null &&
+                          siteConfig.imageURL.isNotEmpty) {
                         return siteConfig.imageURL.startsWith('http')
                             ? Image.network(
                                 siteConfig.imageURL,
@@ -81,10 +86,7 @@ class ForgotPasswordPage extends StatelessWidget {
                     const Text(
                       'Masukkan alamat email Anda untuk menerima link pengaturan ulang kata sandi',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: AppColors.grey),
                     ),
                     const SizedBox(height: 24),
 
@@ -93,18 +95,22 @@ class ForgotPasswordPage extends StatelessWidget {
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submitForm(formKey, emailController, authController),
+                      onFieldSubmitted: (_) =>
+                          _submitForm(formKey, emailController, authController),
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.email_outlined),
-                        helperText: 'Masukkan email yang terdaftar di akun Anda',
+                        helperText:
+                            'Masukkan email yang terdaftar di akun Anda',
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Email tidak boleh kosong';
                         }
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
+                        if (!RegExp(
+                          r'^[^@]+@[^@]+\.[^@]+',
+                        ).hasMatch(value.trim())) {
                           return 'Format email tidak valid';
                         }
                         return null;
@@ -113,46 +119,53 @@ class ForgotPasswordPage extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Submit Button
-                    Obx(() => SizedBox(
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: authController.isLoading
-                            ? null
-                            : () => _submitForm(formKey, emailController, authController),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    Obx(
+                      () => SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: authController.isLoading
+                              ? null
+                              : () => _submitForm(
+                                  formKey,
+                                  emailController,
+                                  authController,
+                                ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ),
-                        child: authController.isLoading
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.white,
+                          child: authController.isLoading
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              AppColors.white,
+                                            ),
                                       ),
                                     ),
+                                    SizedBox(width: 12),
+                                    Text('Mengirim...'),
+                                  ],
+                                )
+                              : const Text(
+                                  'Kirim Link Reset',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  SizedBox(width: 12),
-                                  Text('Mengirim...'),
-                                ],
-                              )
-                            : const Text(
-                                'Kirim Link Reset',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
                                 ),
-                              ),
+                        ),
                       ),
-                    )),
+                    ),
                     const SizedBox(height: 16),
 
                     // Back to Login Link
@@ -183,24 +196,32 @@ class ForgotPasswordPage extends StatelessWidget {
   ) async {
     if (!formKey.currentState!.validate()) return;
 
-    final result = await authController.forgotPassword(emailController.text.trim());
+    final result = await authController.forgotPassword(
+      emailController.text.trim(),
+    );
 
     if (result['success']) {
-      Get.snackbar(
-        'Berhasil',
-        result['message'],
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('Berhasil'),
+        description: Text(
+          'Link pengaturan ulang kata sandi telah dikirim ke email Anda.',
+        ),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
       _showSuccessDialog(emailController.text.trim());
     } else {
-      Get.snackbar(
-        'Error',
-        result['message'],
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Gagal'),
+        description: Text(
+          result['message'] ?? 'Terjadi kesalahan saat mengirim email.',
+        ),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }
@@ -216,10 +237,7 @@ class ForgotPasswordPage extends StatelessWidget {
         title: const Text(
           'Email Terkirim!',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.green,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: AppColors.green, fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Link untuk mengatur ulang kata sandi telah dikirim ke $email.\n\nSilakan periksa email Anda dan ikuti petunjuk yang diberikan.',

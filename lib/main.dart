@@ -7,6 +7,7 @@ import 'package:selforder/routes/app_pages.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -18,7 +19,7 @@ void main() async {
   await Firebase.initializeApp();
   await setupFCM();
 
-  runApp(const MyApp());
+  runApp(ToastificationWrapper(child: const MyApp()));
 }
 
 Future<void> setupFCM() async {
@@ -48,16 +49,11 @@ Future<void> setupFCM() async {
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     if (message.notification != null) {
-      // Get.snackbar(
-      //   message.notification!.title ?? 'Notifikasi',
-      //   message.notification!.body ?? '',
-      //   snackPosition: SnackPosition.TOP,
-      //   duration: const Duration(seconds: 4),
-      //   backgroundColor: AppColors.primary,
-      //   colorText: AppColors.white,
-      //   icon: const Icon(Icons.notifications, color: AppColors.white),
-      //   margin: const EdgeInsets.all(10),
-      // );
+      toastification.show(
+        title: Text(message.notification!.title ?? ''),
+        description: Text(message.notification!.body ?? ''),
+        type: ToastificationType.info,
+      );
       if (message.data['type'] == 'reservation') {
         Get.toNamed('${AppRoutes.MAIN}/reservation');
         Future.delayed(const Duration(milliseconds: 500), () {

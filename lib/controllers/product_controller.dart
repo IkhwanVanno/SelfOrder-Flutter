@@ -1,9 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:selforder/models/product_model.dart';
 import 'package:selforder/models/category_model.dart';
 import 'package:selforder/services/api_service.dart';
-import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 const _pageSize = 6; // Sesuai dengan limit di API
 
@@ -47,12 +48,12 @@ class ProductController extends GetxController {
       _categories.value = categories;
     } catch (e) {
       print('Failed to load categories: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memuat kategori',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal memuat kategori produk'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
     }
   }
@@ -84,12 +85,12 @@ class ProductController extends GetxController {
         pagingController.error = error;
       }
 
-      Get.snackbar(
-        'Error',
-        'Gagal memuat produk',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal memuat produk'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
     }
   }

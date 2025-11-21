@@ -4,6 +4,7 @@ import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/controllers/siteconfig_controller.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 class RegisterPage extends StatelessWidget {
   const RegisterPage({super.key});
@@ -276,21 +277,23 @@ class RegisterPage extends StatelessWidget {
     );
 
     if (success) {
-      Get.snackbar(
-        'Berhasil',
-        'Pendaftaran berhasil',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('Berhasil'),
+        description: Text('Pendaftaran berhasil! Silakan masuk.'),
+        autoCloseDuration: const Duration(seconds: 3),
+        alignment: Alignment.topCenter,
       );
       Get.offNamed(AppRoutes.LOGIN);
     } else {
-      Get.snackbar(
-        'Error',
-        'Pendaftaran gagal',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Gagal'),
+        description: Text('Pendaftaran gagal. Silakan coba lagi.'),
+        autoCloseDuration: const Duration(seconds: 3),
+        alignment: Alignment.topCenter,
       );
     }
   }
@@ -298,22 +301,24 @@ class RegisterPage extends StatelessWidget {
   Future<void> _handleGoogleLogin(AuthController authController) async {
     final success = await authController.loginWithGoogle();
     if (success) {
-      Get.snackbar(
-        'Berhasil',
-        'Login Google berhasil!',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('Berhasil'),
+        description: Text('Login Google berhasil!'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(seconds: 3));
       Get.offAllNamed(AppRoutes.MAIN);
     } else {
-      Get.snackbar(
-        'Gagal',
-        'Login Google dibatalkan atau gagal!',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Gagal'),
+        description: Text('Login Google gagal. Silakan coba lagi.'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }

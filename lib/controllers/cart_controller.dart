@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:selforder/controllers/order_controller.dart';
 import 'package:selforder/models/cartitem_model.dart';
@@ -8,7 +9,7 @@ import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/controllers/product_controller.dart';
-import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 class CartController extends GetxController {
   final _cartItems = <CartItem>[].obs;
@@ -79,12 +80,12 @@ class CartController extends GetxController {
   Future<void> addToCart(int productId, int quantity) async {
     if (!_authController.isLoggedIn) {
       _productController.updateGuestCart(productId, quantity);
-      Get.snackbar(
-        'Info',
-        'Silahkan masuk terlebih dahulu',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.orange,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Perhatian'),
+        description: const Text('Silakan login untuk menambahkan ke keranjang'),
+        type: ToastificationType.warning,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: const Duration(seconds: 2),
       );
       return;
     }
@@ -134,23 +135,24 @@ class CartController extends GetxController {
           }
 
           final product = _productController.getProductById(productId);
-          Get.snackbar(
-            'Berhasil',
-            '${product?.name ?? "Item"} ditambahkan ke keranjang',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.green,
-            colorText: AppColors.white,
-            duration: const Duration(seconds: 2),
+          toastification.show(
+            title: const Text('Berhasil'),
+            description: Text(
+              '${product?.name ?? 'Produk'} ditambahkan ke keranjang',
+            ),
+            type: ToastificationType.success,
+            style: ToastificationStyle.flatColored,
+            autoCloseDuration: const Duration(seconds: 2),
           );
         } catch (e) {
           print('API Error: $e');
           _rollbackCartItem(productId, tempId);
-          Get.snackbar(
-            'Error',
-            'Gagal menambahkan ke keranjang',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.red,
-            colorText: AppColors.white,
+          toastification.show(
+            title: const Text('Error'),
+            description: const Text('Gagal menambahkan ke keranjang'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.flatColored,
+            autoCloseDuration: const Duration(seconds: 2),
           );
         }
       });
@@ -212,12 +214,12 @@ class CartController extends GetxController {
             );
           }
 
-          Get.snackbar(
-            'Error',
-            'Gagal memperbarui keranjang',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.red,
-            colorText: AppColors.white,
+          toastification.show(
+            title: const Text('Error'),
+            description: const Text('Gagal memperbarui jumlah item'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.flatColored,
+            autoCloseDuration: const Duration(seconds: 2),
           );
         }
       });
@@ -228,26 +230,19 @@ class CartController extends GetxController {
 
   Future<void> removeFromCart(int cartItemId) async {
     try {
-      // 1. Simpan item untuk rollback
       final itemIndex = _cartItems.indexWhere((item) => item.id == cartItemId);
       if (itemIndex < 0) return;
-
       final removedItem = _cartItems[itemIndex];
-
-      // 2. Optimistic Update - Langsung hapus dari UI
       _cartItems.removeAt(itemIndex);
-
-      // 3. API Call
       try {
         await ApiService.removeFromCart(cartItemId);
 
-        Get.snackbar(
-          'Berhasil',
-          'Item dihapus dari keranjang',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.green,
-          colorText: AppColors.white,
-          duration: const Duration(seconds: 2),
+        toastification.show(
+          title: const Text('Berhasil'),
+          description: const Text('Item dihapus dari keranjang'),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: const Duration(seconds: 2),
         );
       } catch (e) {
         print('Remove from cart error: $e');
@@ -255,12 +250,12 @@ class CartController extends GetxController {
         // Rollback - Kembalikan item
         _cartItems.insert(itemIndex, removedItem);
 
-        Get.snackbar(
-          'Error',
-          'Gagal menghapus item',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: const Text('Gagal menghapus item dari keranjang'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: const Duration(seconds: 2),
         );
       }
     } catch (e) {

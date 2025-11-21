@@ -12,6 +12,7 @@ import 'package:selforder/models/reservation_payment_method_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/services/reservation_service.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ReservationController extends GetxController {
@@ -79,12 +80,12 @@ class ReservationController extends GetxController {
       _reservations.value = reservations;
     } catch (e) {
       print('Failed to load reservations: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memuat reservasi',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal memuat data reservasi'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
     } finally {
       _isLoading.value = false;
@@ -96,12 +97,12 @@ class ReservationController extends GetxController {
       return await ReservationService.fetchReservationDetail(id);
     } catch (e) {
       print('Failed to load reservation detail: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memuat detail reservasi',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal memuat detail reservasi'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return null;
     }
@@ -124,33 +125,33 @@ class ReservationController extends GetxController {
       );
 
       if (result['success'] == true) {
-        Get.snackbar(
-          'Berhasil',
-          result['message'],
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.green,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Success'),
+          description: Text(result['message']),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         await loadReservations();
         return true;
       } else {
-        Get.snackbar(
-          'Gagal',
-          result['message'],
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: Text(result['message']),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         return false;
       }
     } catch (e) {
       print('Create reservation error: $e');
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Terjadi kesalahan saat membuat reservasi'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return false;
     }
@@ -161,33 +162,33 @@ class ReservationController extends GetxController {
       final result = await ReservationService.cancelReservation(id);
 
       if (result['success'] == true) {
-        Get.snackbar(
-          'Berhasil',
-          result['message'],
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.green,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Success'),
+          description: Text(result['message']),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         await loadReservations();
         return true;
       } else {
-        Get.snackbar(
-          'Gagal',
-          result['message'],
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: Text(result['message']),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         return false;
       }
     } catch (e) {
       print('Cancel reservation error: $e');
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Terjadi kesalahan saat membatalkan reservasi'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return false;
     }
@@ -198,12 +199,12 @@ class ReservationController extends GetxController {
       return await ReservationService.fetchPaymentMethods(amount);
     } catch (e) {
       print('Failed to load payment methods: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memuat metode pembayaran',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal memuat metode pembayaran'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return [];
     }
@@ -220,33 +221,33 @@ class ReservationController extends GetxController {
       );
 
       if (result['success'] == true) {
-        Get.snackbar(
-          'Berhasil',
-          result['message'],
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.green,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Success'),
+          description: Text(result['message']),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         await loadReservations();
         return true;
       } else {
-        Get.snackbar(
-          'Gagal',
-          result['message'],
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: Text(result['message']),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         return false;
       }
     } catch (e) {
       print('Process payment error: $e');
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Terjadi kesalahan saat memproses pembayaran'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return false;
     }
@@ -257,11 +258,14 @@ class ReservationController extends GetxController {
       if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.manageExternalStorage.request();
         if (!status.isGranted) {
-          Get.snackbar(
-            'Izin Ditolak',
-            'Tidak bisa menyimpan file tanpa izin',
-            backgroundColor: AppColors.red,
-            colorText: AppColors.white,
+          toastification.show(
+            title: const Text('Error'),
+            description: const Text(
+              'Izin penyimpanan diperlukan untuk mengunduh PDF.',
+            ),
+            type: ToastificationType.error,
+            style: ToastificationStyle.flatColored,
+            autoCloseDuration: Duration(seconds: 2),
           );
           return;
         }
@@ -272,11 +276,12 @@ class ReservationController extends GetxController {
       );
 
       if (pdfBytes == null) {
-        Get.snackbar(
-          'Error',
-          'Gagal mengunduh PDF',
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: const Text('Gagal mengunduh file PDF'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
         return;
       }
@@ -295,22 +300,23 @@ class ReservationController extends GetxController {
       final file = File(savePath);
       await file.writeAsBytes(pdfBytes);
 
-      Get.snackbar(
-        'Berhasil',
-        'Tanda terima disimpan: ${file.path}',
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
-        duration: const Duration(seconds: 3),
+      toastification.show(
+        title: const Text('Success'),
+        description: Text('PDF disimpan di ${file.path}'),
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
 
       await OpenFile.open(file.path);
     } catch (e) {
       print('Download PDF error: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal menyimpan file: $e',
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal mengunduh file PDF'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
     }
   }
@@ -319,31 +325,31 @@ class ReservationController extends GetxController {
     try {
       final success = await ReservationService.sendReservationEmail(id);
       if (success) {
-        Get.snackbar(
-          'Berhasil',
-          'Tanda terima berhasil dikirim ke email',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.green,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Success'),
+          description: const Text('Email berhasil dikirim'),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
       } else {
-        Get.snackbar(
-          'Error',
-          'Gagal mengirim email',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: const Text('Gagal mengirim email'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
       }
       return success;
     } catch (e) {
       print('Send email error: $e');
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Terjadi kesalahan saat mengirim email'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return false;
     }
@@ -598,21 +604,27 @@ class ReservationController extends GetxController {
                           kursiController.text.isEmpty ||
                           waktuMulai.value == null ||
                           waktuSelesai.value == null) {
-                        Get.snackbar(
-                          'Error',
-                          'Mohon lengkapi semua field yang wajib diisi',
-                          backgroundColor: AppColors.red,
-                          colorText: AppColors.white,
+                        toastification.show(
+                          title: const Text('Error'),
+                          description: const Text(
+                            'Lengkapi semua field yang wajib diisi',
+                          ),
+                          type: ToastificationType.error,
+                          style: ToastificationStyle.flatColored,
+                          autoCloseDuration: Duration(seconds: 2),
                         );
                         return;
                       }
 
                       if (waktuSelesai.value!.isBefore(waktuMulai.value!)) {
-                        Get.snackbar(
-                          'Error',
-                          'Waktu selesai harus setelah waktu mulai',
-                          backgroundColor: AppColors.red,
-                          colorText: AppColors.white,
+                        toastification.show(
+                          title: const Text('Error'),
+                          description: const Text(
+                            'Waktu selesai harus setelah waktu mulai',
+                          ),
+                          type: ToastificationType.error,
+                          style: ToastificationStyle.flatColored,
+                          autoCloseDuration: Duration(seconds: 2),
                         );
                         return;
                       }
@@ -664,11 +676,12 @@ class ReservationController extends GetxController {
     final paymentMethods = await getPaymentMethods(amount);
 
     if (paymentMethods.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Tidak ada metode pembayaran tersedia',
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Tidak ada metode pembayaran tersedia'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return;
     }
@@ -744,11 +757,14 @@ class ReservationController extends GetxController {
                   : () async {
                       final method = selectedMethod.value;
                       if (method == null) {
-                        Get.snackbar(
-                          'Error',
-                          'Pilih metode pembayaran terlebih dahulu',
-                          backgroundColor: AppColors.red,
-                          colorText: AppColors.white,
+                        toastification.show(
+                          title: const Text('Error'),
+                          description: const Text(
+                            'Pilih metode pembayaran terlebih dahulu',
+                          ),
+                          type: ToastificationType.error,
+                          style: ToastificationStyle.flatColored,
+                          autoCloseDuration: Duration(seconds: 2),
                         );
                         return;
                       }
@@ -798,21 +814,21 @@ class ReservationController extends GetxController {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        Get.snackbar(
-          'Error',
-          'Tidak dapat membuka halaman pembayaran',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: const Text('Tidak dapat membuka tautan pembayaran'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Terjadi kesalahan saat membuka tautan'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
     }
   }

@@ -9,6 +9,7 @@ import 'package:selforder/models/product_model.dart';
 import 'package:selforder/models/paymentmethod_model.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CartPage extends StatelessWidget {
@@ -453,34 +454,37 @@ class CartPage extends StatelessWidget {
     CartController controller,
   ) async {
     if (tableNumber.trim().isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Silahkan masukkan nomor meja',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Silahkan masukkan nomor meja'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
       return;
     }
 
     if (controller.selectedPaymentMethod == null) {
-      Get.snackbar(
-        'Error',
-        'Silahkan pilih metode pembayaran',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Silahkan pilih metode pembayaran'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
       return;
     }
 
     if (controller.cartItems.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Keranjang kosong',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Keranjang anda kosong'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
       return;
     }
@@ -497,12 +501,13 @@ class CartPage extends StatelessWidget {
       _showPaymentDialog(order);
     } catch (e) {
       Get.back(); // Close loading dialog
-      Get.snackbar(
-        'Error',
-        'Gagal membuat pesanan: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Gagal membuat pesanan: ${e.toString()}'),
+        autoCloseDuration: const Duration(seconds: 3),
+        alignment: Alignment.topCenter,
       );
     }
   }
@@ -558,21 +563,23 @@ class CartPage extends StatelessWidget {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        Get.snackbar(
-          'Error',
-          'Tidak dapat membuka URL pembayaran',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          title: Text('Error'),
+          description: Text('Tidak dapat membuka tautan pembayaran.'),
+          autoCloseDuration: const Duration(seconds: 2),
+          alignment: Alignment.topCenter,
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error membuka pembayaran: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Terjadi kesalahan saat membuka tautan pembayaran.'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }

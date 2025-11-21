@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -301,20 +302,22 @@ class ProfilePage extends StatelessWidget {
 
     if (success) {
       passwordController.clear();
-      Get.snackbar(
-        'Berhasil',
-        'Profile telah berhasil diperbarui!',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('Berhasil'),
+        description: Text('Profile berhasil diperbarui'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     } else {
-      Get.snackbar(
-        'Error',
-        'Profile gagal diperbarui',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Gagal'),
+        description: Text('Gagal memperbarui profile'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }
@@ -343,12 +346,13 @@ class ProfilePage extends StatelessWidget {
 
     if (confirm == true) {
       await authController.logout();
-      Get.snackbar(
-        'Berhasil',
-        'Berhasil keluar',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        title: Text('Berhasil'),
+        description: Text('Anda telah keluar dari akun Anda.'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }

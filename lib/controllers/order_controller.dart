@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,7 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:selforder/models/order_model.dart';
 import 'package:selforder/services/api_service.dart';
 import 'package:selforder/controllers/auth_controller.dart';
-import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 
 class OrderController extends GetxController {
   final _orders = <Order>[].obs;
@@ -51,12 +52,12 @@ class OrderController extends GetxController {
       _orders.value = orders;
     } catch (e) {
       print('Failed to load orders: $e');
-      Get.snackbar(
-        'Error',
-        'Gagal memuat pesanan',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal memuat data pesanan'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
     } finally {
       _isLoading.value = false;
@@ -71,31 +72,31 @@ class OrderController extends GetxController {
     try {
       final success = await ApiService.sendInvoiceEmail(orderId);
       if (success) {
-        Get.snackbar(
-          'Berhasil',
-          'Invoice berhasil dikirim ke email',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.green,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Success'),
+          description: const Text('Invoice berhasil dikirim via email'),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
       } else {
-        Get.snackbar(
-          'Error',
-          'Gagal mengirim invoice',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          title: const Text('Error'),
+          description: const Text('Gagal mengirim invoice via email'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
         );
       }
       return success;
     } catch (e) {
       print('Send invoice error: $e');
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal mengirim invoice via email'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       return false;
     }
@@ -106,11 +107,14 @@ class OrderController extends GetxController {
       if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.manageExternalStorage.request();
         if (!status.isGranted) {
-          Get.snackbar(
-            'Izin Ditolak',
-            'Tidak bisa menyimpan file tanpa izin',
-            backgroundColor: AppColors.red,
-            colorText: AppColors.white,
+          toastification.show(
+            title: const Text('Permission Denied'),
+            description: const Text(
+              'Izin penyimpanan diperlukan untuk mengunduh invoice.',
+            ),
+            type: ToastificationType.error,
+            style: ToastificationStyle.flatColored,
+            autoCloseDuration: Duration(seconds: 2),
           );
           return;
         }
@@ -135,16 +139,24 @@ class OrderController extends GetxController {
       final file = File(savePath);
       await file.writeAsBytes(pdfBytes);
 
-      Get.snackbar(
-        'Berhasil',
-        'Invoice disimpan: ${file.path}',
-        backgroundColor: AppColors.green,
-        colorText: AppColors.white,
+      toastification.show(
+        title: const Text('Success'),
+        description: Text('Invoice disimpan di ${file.path}'),
+        type: ToastificationType.success,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
 
       await OpenFile.open(file.path);
     } catch (e) {
-      Get.snackbar('Error', 'Gagal menyimpan file: $e');
+      print('Download invoice error: $e');
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal mengunduh invoice PDF'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
+      );
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:selforder/models/payment_reservation_model.dart';
 import 'package:selforder/models/reservation_model.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:toastification/toastification.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ReservationPage extends StatelessWidget {
@@ -17,7 +18,7 @@ class ReservationPage extends StatelessWidget {
     // Use Get.find with lazy initialization
     final authController = Get.find<AuthController>();
     final reservationController = Get.find<ReservationController>();
-    
+
     return Scaffold(
       body: Obx(() {
         if (!authController.isLoggedIn) {
@@ -45,7 +46,8 @@ class ReservationPage extends StatelessWidget {
       floatingActionButton: Obx(() {
         if (!authController.isLoggedIn) return const SizedBox.shrink();
         return FloatingActionButton.extended(
-          onPressed: () => reservationController.showCreateReservationDialog(Get.context!),
+          onPressed: () =>
+              reservationController.showCreateReservationDialog(Get.context!),
           backgroundColor: AppColors.primary,
           icon: const Icon(Icons.add),
           label: const Text('Buat Reservasi'),
@@ -559,21 +561,23 @@ class ReservationPage extends StatelessWidget {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        Get.snackbar(
-          'Error',
-          'Tidak dapat membuka halaman pembayaran',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.red,
-          colorText: AppColors.white,
+        toastification.show(
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          title: Text('Error'),
+          description: Text('Tidak dapat membuka tautan pembayaran.'),
+          autoCloseDuration: const Duration(seconds: 2),
+          alignment: Alignment.topCenter,
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Error: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.red,
-        colorText: AppColors.white,
+      toastification.show(
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('Terjadi kesalahan saat membuka tautan pembayaran.'),
+        autoCloseDuration: const Duration(seconds: 2),
+        alignment: Alignment.topCenter,
       );
     }
   }
