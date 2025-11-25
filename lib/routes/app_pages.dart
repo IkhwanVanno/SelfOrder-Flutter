@@ -29,6 +29,11 @@ class AppPages {
       page: () => const MainNavigation(initialIndex: 3),
       bindings: [MainBinding()],
     ),
+    GetPage(
+      name: '${AppRoutes.MAIN}/orders',
+      page: () => const MainNavigation(initialIndex: 2),
+      bindings: [MainBinding()],
+    ),
   ];
 }
 

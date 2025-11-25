@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:selforder/controllers/order_controller.dart';
 import 'package:selforder/controllers/reservation_controller.dart';
 import 'package:selforder/routes/app_pages.dart';
 import 'package:selforder/routes/app_routes.dart';
@@ -53,12 +54,21 @@ Future<void> setupFCM() async {
         title: Text(message.notification!.title ?? ''),
         description: Text(message.notification!.body ?? ''),
         type: ToastificationType.info,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
       );
       if (message.data['type'] == 'reservation') {
         Get.toNamed('${AppRoutes.MAIN}/reservation');
         Future.delayed(const Duration(milliseconds: 500), () {
           final reservationController = Get.find<ReservationController>();
           reservationController.loadReservations();
+        });
+      }
+      if (message.data['type'] == 'order') {
+        Get.toNamed('${AppRoutes.MAIN}/orders');
+        Future.delayed(Duration(milliseconds: 500), () {
+          final orderController = Get.find<OrderController>();
+          orderController.loadOrders();
         });
       }
     }
@@ -72,6 +82,13 @@ Future<void> setupFCM() async {
         reservationController.loadReservations();
       });
     }
+    if (message.data['type'] == 'order') {
+      Get.toNamed('${AppRoutes.MAIN}/orders');
+      Future.delayed(Duration(milliseconds: 500), () {
+        final orderController = Get.find<OrderController>();
+        orderController.loadOrders();
+      });
+    }
   });
 
   RemoteMessage? initialMessage = await FirebaseMessaging.instance
@@ -83,6 +100,15 @@ Future<void> setupFCM() async {
         Future.delayed(const Duration(milliseconds: 500), () {
           final reservationController = Get.find<ReservationController>();
           reservationController.loadReservations();
+        });
+      });
+    }
+    if (initialMessage.data['type'] == 'order') {
+      Future.delayed(const Duration(seconds: 1), () {
+        Get.toNamed('${AppRoutes.MAIN}/orders');
+        Future.delayed(Duration(milliseconds: 500), () {
+          final orderController = Get.find<OrderController>();
+          orderController.loadOrders();
         });
       });
     }
