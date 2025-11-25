@@ -51,14 +51,12 @@ Future<void> setupFCM() async {
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     if (message.notification != null) {
       if (message.data['type'] == 'reservation') {
-        Get.toNamed('${AppRoutes.MAIN}/reservation');
         Future.delayed(const Duration(milliseconds: 500), () {
           final reservationController = Get.find<ReservationController>();
           reservationController.loadReservations();
         });
       }
       if (message.data['type'] == 'order') {
-        Get.toNamed('${AppRoutes.MAIN}/orders');
         Future.delayed(Duration(milliseconds: 500), () {
           final orderController = Get.find<OrderController>();
           orderController.loadOrders();
