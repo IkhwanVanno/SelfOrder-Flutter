@@ -50,13 +50,6 @@ Future<void> setupFCM() async {
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     if (message.notification != null) {
-      // toastification.show(
-      //   title: Text(message.notification!.title ?? ''),
-      //   description: Text(message.notification!.body ?? ''),
-      //   type: ToastificationType.info,
-      //   style: ToastificationStyle.flatColored,
-      //   autoCloseDuration: Duration(seconds: 2),
-      // );
       if (message.data['type'] == 'reservation') {
         Get.toNamed('${AppRoutes.MAIN}/reservation');
         Future.delayed(const Duration(milliseconds: 500), () {
