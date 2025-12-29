@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:selforder/config/app_config.dart';
+import 'package:selforder/models/app_version_model.dart';
 import 'package:selforder/models/cartitem_model.dart';
 import 'package:selforder/models/category_model.dart';
 import 'package:selforder/models/order_model.dart';
@@ -18,6 +19,21 @@ class ApiService {
 
     if (response.statusCode == 401) {
       throw Exception('Session expired');
+    }
+  }
+
+  // App Version Check
+  static Future<AppVersion> checkAppVersion() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/appversion'),
+      headers: SessionManager.getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      return AppVersion.fromJson(jsonData);
+    } else {
+      throw Exception('Failed to check app version');
     }
   }
 

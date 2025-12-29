@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:selforder/controllers/order_controller.dart';
 import 'package:selforder/controllers/reservation_controller.dart';
+import 'package:selforder/controllers/version_controller.dart';
 import 'package:selforder/routes/app_pages.dart';
 import 'package:selforder/routes/app_routes.dart';
 import 'package:selforder/services/auth_service.dart';
 import 'package:selforder/theme/app_theme.dart';
+import 'package:selforder/widgets/version_check_dialog.dart';
 import 'package:toastification/toastification.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -106,8 +108,31 @@ Future<void> setupFCM() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAppVersion();
+  }
+
+  void _checkAppVersion() async {
+    await Future.delayed(const Duration(seconds: 1));
+    final versionController = Get.put(VersionController());
+    await versionController.checkVersion();
+    if (versionController.needsUpdate.value) {
+      Get.dialog(
+        VersionCheckDialog(controller: versionController),
+        barrierDismissible: false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

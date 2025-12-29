@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:selforder/controllers/version_controller.dart';
 import 'package:selforder/pages/loginpage.dart';
 import 'package:selforder/pages/registerpage.dart';
 import 'package:selforder/pages/forgotpasswordpage.dart';
@@ -41,6 +42,7 @@ class AppPages {
 class MainBinding extends Bindings {
   @override
   void dependencies() {
+    Get.put<VersionController>(VersionController(), permanent: true);
     Get.put<SiteConfigController>(SiteConfigController(), permanent: true);
     Get.put<AuthController>(AuthController(), permanent: true);
     Get.put<ProductController>(ProductController(), permanent: true);

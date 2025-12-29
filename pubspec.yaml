@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   get: ^4.7.2 # State management/route
+  package_info_plus: ^8.1.2 # App Info
   toastification: ^3.0.3 # Toast Notification
   infinite_scroll_pagination: ^4.0.0 #Paggination API
   cupertino_icons: ^1.0.2 # Icons IOS
