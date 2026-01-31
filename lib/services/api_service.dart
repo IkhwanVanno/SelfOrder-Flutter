@@ -102,6 +102,29 @@ class ApiService {
     }
   }
 
+  // Fetch single product by ID
+  static Future<Product?> fetchProductById(int productId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/products/$productId'),
+      headers: SessionManager.getHeaders(),
+    );
+
+    _handleResponse(response);
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      if (jsonData['success'] == true && jsonData['data'] != null) {
+        return Product.fromJson(jsonData['data']);
+      } else {
+        return null;
+      }
+    } else if (response.statusCode == 404) {
+      return null;
+    } else {
+      throw Exception('Failed to load product');
+    }
+  }
+
   // Payment method
   static Future<List<PaymentMethod>> fetchPaymentMethods(int amount) async {
     final url = Uri.parse('$_baseUrl/paymentmethods');

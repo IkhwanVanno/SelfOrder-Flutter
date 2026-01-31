@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:selforder/controllers/auth_controller.dart';
 import 'package:selforder/controllers/cart_controller.dart';
@@ -165,18 +166,30 @@ class CartPage extends StatelessWidget {
                               child: Row(
                                 children: [
                                   if (method.paymentImage.isNotEmpty)
-                                    Image.network(
-                                      method.paymentImage,
-                                      width: 24,
-                                      height: 24,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.payment,
-                                              size: 24,
-                                            );
-                                          },
-                                    )
+                                    if (method.paymentImage.toLowerCase().endsWith('.svg'))
+                                      SvgPicture.network(
+                                        method.paymentImage,
+                                        width: 8,
+                                        height: 8,
+                                        placeholderBuilder: (context) =>
+                                            const Icon(
+                                          Icons.payment,
+                                          size: 24,
+                                        ),
+                                      )
+                                    else
+                                      Image.network(
+                                        method.paymentImage,
+                                        width: 24,
+                                        height: 24,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return const Icon(
+                                                Icons.payment,
+                                                size: 24,
+                                              );
+                                            },
+                                      )
                                   else
                                     const Icon(Icons.payment, size: 24),
                                   const SizedBox(width: 8),

@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.5.0+1
 
 environment:
   sdk: ^3.9.2
@@ -16,6 +16,7 @@ dependencies:
   toastification: ^3.0.3 # Toast Notification
   infinite_scroll_pagination: ^4.0.0 #Paggination API
   cupertino_icons: ^1.0.2 # Icons IOS
+  flutter_svg: ^2.2.3 # SVG Image
   intl: ^0.20.2 # Format tanggal/mata uang
   http: ^1.1.0 # Call API
   url_launcher: ^6.2.5 # Open URL

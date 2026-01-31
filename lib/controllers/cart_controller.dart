@@ -51,7 +51,16 @@ class CartController extends GetxController {
     _isLoading.value = true;
     try {
       final items = await ApiService.fetchCartItems();
+
+      if (items.isNotEmpty) {
+        final productIds = items.map((e) => e.productId).toList();
+        print('Loading ${productIds.length} products for cart items...');
+        await _productController.preloadProductsByIds(productIds);
+        print('Products loaded successfully');
+      }
+
       _cartItems.value = items;
+
       if (_cartItems.isNotEmpty) {
         await loadPaymentMethods();
       }
@@ -90,24 +99,9 @@ class CartController extends GetxController {
       return;
     }
 
+    await _productController.fetchAndCacheProduct(productId);
+
     try {
-      // Optimistic update
-      final existingIndex = _cartItems.indexWhere(
-        (item) => item.productId == productId,
-      );
-      int tempId = DateTime.now().millisecondsSinceEpoch;
-
-      if (existingIndex >= 0) {
-        final item = _cartItems[existingIndex];
-        final newQuantity = item.quantity + quantity;
-        _cartItems[existingIndex] = item.copyWith(quantity: newQuantity);
-      } else {
-        _cartItems.add(
-          CartItem(id: tempId, quantity: quantity, productId: productId),
-        );
-      }
-
-      // Simpan quantity terbaru untuk debounce
       _pendingQuantities[productId] =
           (_pendingQuantities[productId] ?? 0) + quantity;
 
@@ -122,13 +116,19 @@ class CartController extends GetxController {
             qtyToSend,
           );
 
-          // Ganti item temporary dengan ID server
-          final index = _cartItems.indexWhere(
+          // Update dengan data dari server
+          final currentIndex = _cartItems.indexWhere(
             (item) => item.productId == productId,
           );
-          if (index >= 0) {
-            _cartItems[index] = serverCartItem;
+
+          if (currentIndex >= 0) {
+            _cartItems[currentIndex] = serverCartItem;
+          } else {
+            _cartItems.add(serverCartItem);
           }
+
+          // Pastikan produk tetap di cache
+          await _productController.fetchAndCacheProduct(productId);
 
           if (_paymentMethods.isEmpty) {
             await loadPaymentMethods();
@@ -146,7 +146,10 @@ class CartController extends GetxController {
           );
         } catch (e) {
           print('API Error: $e');
-          _rollbackCartItem(productId, tempId);
+
+          // Reload cart dari server jika gagal
+          await loadCartItems();
+
           toastification.show(
             title: const Text('Error'),
             description: const Text('Gagal menambahkan ke keranjang'),
@@ -168,29 +171,26 @@ class CartController extends GetxController {
     }
 
     try {
-      // 1. Optimistic Update
       final index = _cartItems.indexWhere((item) => item.id == cartItemId);
       if (index < 0) return;
 
       final item = _cartItems[index];
       final oldQuantity = item.quantity;
 
-      _cartItems[index] = CartItem(
-        id: item.id,
-        quantity: newQuantity,
-        productId: item.productId,
-      );
+      // Pastikan produk ada di cache sebelum update
+      await _productController.fetchAndCacheProduct(item.productId);
 
-      // 2. Debounce API call
+      // Optimistic update
+      _cartItems[index] = item.copyWith(quantity: newQuantity);
+
+      // Debounce API call
       _debounceApiCall(item.productId, () async {
         try {
-          // 3. API Call
           final serverCartItem = await ApiService.updateCartItem(
             cartItemId,
             newQuantity,
           );
 
-          // 4. Update dengan data dari server
           final currentIndex = _cartItems.indexWhere(
             (item) => item.id == cartItemId,
           );
@@ -198,20 +198,19 @@ class CartController extends GetxController {
           if (currentIndex >= 0) {
             _cartItems[currentIndex] = serverCartItem;
           }
+
+          // Refresh cache produk
+          await _productController.fetchAndCacheProduct(item.productId);
         } catch (e) {
           print('Update cart error: $e');
 
-          // Rollback ke quantity sebelumnya
+          // Rollback
           final rollbackIndex = _cartItems.indexWhere(
             (item) => item.id == cartItemId,
           );
 
           if (rollbackIndex >= 0) {
-            _cartItems[rollbackIndex] = CartItem(
-              id: item.id,
-              quantity: oldQuantity,
-              productId: item.productId,
-            );
+            _cartItems[rollbackIndex] = item.copyWith(quantity: oldQuantity);
           }
 
           toastification.show(
@@ -232,8 +231,10 @@ class CartController extends GetxController {
     try {
       final itemIndex = _cartItems.indexWhere((item) => item.id == cartItemId);
       if (itemIndex < 0) return;
+
       final removedItem = _cartItems[itemIndex];
       _cartItems.removeAt(itemIndex);
+
       try {
         await ApiService.removeFromCart(cartItemId);
 
@@ -247,7 +248,7 @@ class CartController extends GetxController {
       } catch (e) {
         print('Remove from cart error: $e');
 
-        // Rollback - Kembalikan item
+        // Rollback
         _cartItems.insert(itemIndex, removedItem);
 
         toastification.show(
@@ -263,7 +264,6 @@ class CartController extends GetxController {
     }
   }
 
-  // Debounce helper method
   void _debounceApiCall(int productId, Function() callback) {
     if (_debounceTimers[productId] != null) {
       _debounceTimers[productId]!.cancel();
@@ -273,23 +273,6 @@ class CartController extends GetxController {
       callback();
       _debounceTimers.remove(productId);
     });
-  }
-
-  // Rollback optimistic update
-  void _rollbackCartItem(int productId, int tempId) {
-    final index = _cartItems.indexWhere((item) => item.productId == productId);
-
-    if (index >= 0) {
-      final item = _cartItems[index];
-
-      // Jika ini adalah item baru dengan temp ID, hapus
-      if (item.id == tempId) {
-        _cartItems.removeAt(index);
-      } else {
-        // Jika ini adalah update quantity, reload dari server
-        loadCartItems();
-      }
-    }
   }
 
   void selectPaymentMethod(PaymentMethod? method) {
@@ -307,7 +290,13 @@ class CartController extends GetxController {
   int calculateSubtotal() {
     return _cartItems.fold(0, (sum, item) {
       final product = _productController.getProductById(item.productId);
-      return sum + ((product?.price ?? 0) * item.quantity);
+      if (product == null) {
+        print(
+          'WARNING: Product ${item.productId} not found in calculateSubtotal',
+        );
+        return sum;
+      }
+      return sum + ((product.price) * item.quantity);
     });
   }
 
@@ -353,8 +342,9 @@ class CartController extends GetxController {
     _selectedPaymentMethod.value = null;
   }
 
-  // Force refresh
+  // Enhanced refresh
   Future<void> refresh() async {
+    print('Refreshing cart...');
     await loadCartItems();
   }
 }

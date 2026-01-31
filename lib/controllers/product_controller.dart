@@ -13,6 +13,7 @@ class ProductController extends GetxController {
   final _selectedCategoryId = Rx<int?>(null);
   final _selectedFilter = Rx<String?>(null);
   final _guestCartQuantities = <int, int>{}.obs;
+  final _productCache = <int, Product>{}.obs;
 
   // Pagination controller
   final PagingController<int, Product> pagingController = PagingController(
@@ -71,6 +72,10 @@ class ProductController extends GetxController {
         limit: _pageSize,
       );
 
+      for (final product in newProducts) {
+        _productCache[product.id] = product;
+      }
+
       if (isClosed) return;
       final isLastPage = newProducts.length < _pageSize;
 
@@ -105,12 +110,63 @@ class ProductController extends GetxController {
   }
 
   Product? getProductById(int productId) {
+    if (_productCache.containsKey(productId)) {
+      return _productCache[productId];
+    }
+
     try {
       final allProducts = pagingController.itemList ?? [];
-      return allProducts.firstWhere((p) => p.id == productId);
+      final product = allProducts.firstWhere((p) => p.id == productId);
+      _productCache[productId] = product;
+      return product;
     } catch (e) {
+      print('Product $productId not found in cache or pagingController');
       return null;
     }
+  }
+
+  Future<Product?> fetchAndCacheProduct(int productId) async {
+    try {
+      if (_productCache.containsKey(productId)) {
+        return _productCache[productId];
+      }
+      final product = await ApiService.fetchProductById(productId);
+      if (product != null) {
+        _productCache[productId] = product;
+      }
+
+      return product;
+    } catch (e) {
+      print('Failed to fetch product $productId: $e');
+      return null;
+    }
+  }
+
+  Future<void> preloadProductsByIds(List<int> productIds) async {
+    try {
+      final missingIds = productIds
+          .where((id) => !_productCache.containsKey(id))
+          .toList();
+
+      if (missingIds.isEmpty) {
+        print('All products already in cache');
+        return;
+      }
+
+      print('Pre-loading ${missingIds.length} missing products...');
+
+      for (final productId in missingIds) {
+        await fetchAndCacheProduct(productId);
+      }
+
+      print('Pre-loading complete');
+    } catch (e) {
+      print('Failed to preload products: $e');
+    }
+  }
+  
+  void clearProductCache() {
+    _productCache.clear();
   }
 
   // Guest cart management
