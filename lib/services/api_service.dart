@@ -307,6 +307,33 @@ class ApiService {
     }
   }
 
+  static Future<bool> cancelOrder(String orderId) async {
+    try {
+      if (!SessionManager.isLoggedIn) {
+        throw Exception('Please login to cancel order');
+      }
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/cancelOrder/$orderId'),
+        headers: SessionManager.getHeaders(),
+      );
+
+      _handleResponse(response);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['status'] == true;
+      } else {
+        print('Cancel order failed: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Cancel order error: $e');
+      return false;
+    }
+  }
+
   // Send Invoice to Email
   static Future<bool> sendInvoiceEmail(String orderId) async {
     final response = await http.post(

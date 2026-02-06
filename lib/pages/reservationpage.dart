@@ -305,6 +305,27 @@ class ReservationPage extends StatelessWidget {
                 ],
               ),
 
+              if ((reservation.canBePaid || reservation.hasPendingPayment) &&
+                  !reservation.isPaymentStillAllowed) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: const [
+                    Icon(Icons.info_outline, size: 14, color: AppColors.orange),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Tidak dapat melakukan pembayaran karena melewati batas minimal waktu untuk bayar',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
               const SizedBox(height: 12),
 
               // Action Buttons
@@ -335,7 +356,7 @@ class ReservationPage extends StatelessWidget {
         ),
 
         // Tombol Bayar untuk status Disetujui
-        if (reservation.canBePaid) ...[
+        if (reservation.canBePaid && reservation.isPaymentStillAllowed) ...[
           const SizedBox(width: 8),
           Expanded(
             child: ElevatedButton.icon(
@@ -356,7 +377,8 @@ class ReservationPage extends StatelessWidget {
         ],
 
         // Tombol Lanjutkan Pembayaran
-        if (reservation.hasPendingPayment) ...[
+        if (reservation.hasPendingPayment &&
+            reservation.isPaymentStillAllowed) ...[
           const SizedBox(width: 8),
           Expanded(
             child: ElevatedButton.icon(

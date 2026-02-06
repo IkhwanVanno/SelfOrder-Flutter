@@ -188,4 +188,10 @@ class Reservation {
   bool get isCompleted {
     return status == ReservationStatus.Selesai;
   }
+
+  bool get isPaymentStillAllowed {
+    final now = DateTime.now();
+    final limitTime = waktuMulai.subtract(const Duration(minutes: 20));
+    return now.isBefore(limitTime);
+  }
 }

@@ -409,7 +409,7 @@ class ReservationController extends GetxController {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Biaya reservasi: ${NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0).format(biayaPerJam)}/jam',
+                        'Biaya reservasi: ${NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0).format(biayaPerJam)}/jam\nPemesanan waktu reservasi harus dilakukan minimal 1 jam dari waktu sekarang.',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.blue,
@@ -608,6 +608,23 @@ class ReservationController extends GetxController {
                           title: const Text('Error'),
                           description: const Text(
                             'Lengkapi semua field yang wajib diisi',
+                          ),
+                          type: ToastificationType.error,
+                          style: ToastificationStyle.flatColored,
+                          autoCloseDuration: Duration(seconds: 2),
+                        );
+                        return;
+                      }
+
+                      final nowPlusOneHour = DateTime.now().add(
+                        const Duration(hours: 1),
+                      );
+
+                      if (waktuMulai.value!.isBefore(nowPlusOneHour)) {
+                        toastification.show(
+                          title: const Text('Error'),
+                          description: const Text(
+                            'Waktu mulai reservasi harus lebih dari 1 jam dari sekarang',
                           ),
                           type: ToastificationType.error,
                           style: ToastificationStyle.flatColored,

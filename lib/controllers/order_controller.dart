@@ -64,6 +64,49 @@ class OrderController extends GetxController {
     }
   }
 
+  Future<bool> cancelOrder(String orderId) async {
+    try {
+      final success = await ApiService.cancelOrder(orderId);
+      if (success) {
+        toastification.show(
+          title: const Text('Success'),
+          description: const Text('Pesanan berhasil dibatalkan'),
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
+        );
+
+        // Refresh order list
+        await loadOrders();
+      } else {
+        toastification.show(
+          title: const Text('Error'),
+          description: const Text('Gagal membatalkan pesanan'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: Duration(seconds: 2),
+        );
+      }
+      return success;
+    } catch (e) {
+      print('Cancel order error: $e');
+      toastification.show(
+        title: const Text('Error'),
+        description: const Text('Gagal membatalkan pesanan'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        autoCloseDuration: Duration(seconds: 2),
+      );
+      return false;
+    }
+  }
+
+  // Tambahkan method helper untuk cek apakah order bisa dibatalkan
+  bool canCancelOrder(Order order) {
+    return order.status == OrderStatus.menungguPembayaran ||
+        order.status == OrderStatus.antrean;
+  }
+
   void setFilter(String filter) {
     _selectedFilter.value = filter;
   }

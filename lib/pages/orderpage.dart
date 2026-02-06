@@ -313,70 +313,117 @@ class OrderPage extends StatelessWidget {
 
               const SizedBox(height: 12),
 
+              //information
+              Row(
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: AppColors.orange),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      order.status.label == 'Menunggu Pembayaran'
+                          ? 'Segera melakukan pembayaran sebelum waktu habis.'
+                          : order.status.label == 'Dibatalkan'
+                          ? 'Pesanan ini telah dibatalkan.'
+                          : order.status.label == 'Antrean'
+                          ? 'Pesanan Anda sedang dalam antrean.'
+                          : order.status.label == 'Proses'
+                          ? 'Pesanan Anda sedang diproses, mohon menunggu.'
+                          : order.status.label == 'Selesai'
+                          ? 'Pesanan ini telah selesai.'
+                          : 'Untuk informasi lebih lanjut, silakan cek detail pesanan.',
+                      style: TextStyle(fontSize: 13, color: AppColors.orange),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
               // Action Buttons
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Detail
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: _actionButton(
+                      icon: Icons.info_outline,
+                      label: 'Detail',
                       onPressed: () =>
                           _showOrderDetails(order, currencyFormat, dateFormat),
-                      icon: const Icon(Icons.info_outline, size: 16),
-                      label: const Text('Detail'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        textStyle: const TextStyle(fontSize: 13),
-                      ),
                     ),
                   ),
 
+                  const SizedBox(width: 8),
+
+                  // Batalkan Pesanan
+                  if (controller.canCancelOrder(order)) ...[
+                    Expanded(
+                      child: _actionButton(
+                        icon: Icons.cancel_outlined,
+                        label: 'Batalkan',
+                        color: Colors.red.shade400,
+                        onPressed: () async {
+                          final confirm = await Get.dialog<bool>(
+                            AlertDialog(
+                              title: const Text('Batalkan Pesanan'),
+                              content: Text(
+                                'Apakah Anda yakin ingin membatalkan pesanan ${order.nomorInvoice}?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Get.back(result: false),
+                                  child: const Text('Tidak'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Get.back(result: true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Ya, Batalkan'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            await controller.cancelOrder(order.id.toString());
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+
+                  // Aksi Pembayaran / Email / PDF
                   if (order.status.label != 'Dibatalkan') ...[
                     if (order.status.label == 'Menunggu Pembayaran' &&
                         order.payment?.paymentUrl != null &&
                         order.payment!.paymentUrl.isNotEmpty) ...[
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: _actionButton(
+                          icon: Icons.payment,
+                          label: 'Bayar',
+                          color: AppColors.green,
                           onPressed: () =>
                               _openPaymentUrl(order.payment!.paymentUrl),
-                          icon: const Icon(Icons.payment, size: 16),
-                          label: const Text('Bayar'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.green,
-                            foregroundColor: AppColors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            textStyle: const TextStyle(fontSize: 13),
-                          ),
                         ),
                       ),
                     ] else ...[
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: _actionButton(
+                          icon: Icons.email,
+                          label: 'Email',
+                          color: AppColors.orange,
                           onPressed: () =>
                               controller.sendInvoiceEmail(order.id.toString()),
-                          icon: const Icon(Icons.email, size: 16),
-                          label: const Text('Email'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.orange,
-                            foregroundColor: AppColors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            textStyle: const TextStyle(fontSize: 13),
-                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: _actionButton(
+                          icon: Icons.download,
+                          label: 'PDF',
+                          color: AppColors.blue,
                           onPressed: () => controller.downloadInvoicePdf(order),
-                          icon: const Icon(Icons.download, size: 16),
-                          label: const Text('PDF'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.blue,
-                            foregroundColor: AppColors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            textStyle: const TextStyle(fontSize: 13),
-                          ),
                         ),
                       ),
                     ],
@@ -386,6 +433,26 @@ class OrderPage extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    Color? color,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        textStyle: const TextStyle(fontSize: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
